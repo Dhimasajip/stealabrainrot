@@ -1,4 +1,4 @@
--- [[ KAMIAPA MAIN SCRIPT - FINAL STABLE ]]
+-- [[ KAMIAPA MAIN SCRIPT - NO TELEPORT VERSION ]]
 if getgenv().__KAMI_APA_MAIN_RUNNING then return end
 getgenv().__KAMI_APA_MAIN_RUNNING = true
 
@@ -9,31 +9,13 @@ local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local player = Players.LocalPlayer
 
--- [[ PENGATURAN PEMBATAS & POSISI ]]
-getgenv().MAX_BUY_PER_ITEM = 15 --
+-- [[ PENGATURAN PEMBATAS ]]
+getgenv().MAX_BUY_PER_ITEM = 15 
 getgenv().PURCHASED_LOG = getgenv().PURCHASED_LOG or {} 
 local LAST_PURCHASE_TIME = 0
 local COOLDOWN_TIME = 1.5 
 
--- GANTI KOORDINAT DI BAWAH INI SESUAI TEMPAT BERDIRI KAMU
-local HOME_POS = Vector3.new(-410.13562, -6.50197, 208.25595) --
-
--- [[ STAY AT HOME (ANTI-TELEPORT SPAM) ]]
-task.spawn(function()
-    while true do
-        local char = player.Character
-        local root = char and char:FindFirstChild("HumanoidRootPart")
-        if root then
-            -- Hanya teleport jika jarak karakter terlalu jauh dari titik aman
-            if (root.Position - HOME_POS).Magnitude > 3 then 
-                root.CFrame = CFrame.new(HOME_POS)
-            end
-        end
-        task.wait(1)
-    end
-end)
-
--- [[ SISTEM PEMBELIAN DENGAN LOCK KETAT ]]
+-- [[ SISTEM PEMBELIAN OTOMATIS ]]
 ProximityPromptService.PromptShown:Connect(function(prompt)
     if prompt.ActionText ~= "Purchase" then return end
     if (tick() - LAST_PURCHASE_TIME) < COOLDOWN_TIME then return end
@@ -42,13 +24,13 @@ ProximityPromptService.PromptShown:Connect(function(prompt)
     if model then
         local id = model:GetAttribute("Index") or model.Name
         
-        -- Cek Target List
+        -- Cek apakah item ada di daftar target
         local isTargetItem = false
         for _, v in ipairs(getgenv().TARGET_LIST or {}) do
             if id == v then isTargetItem = true break end
         end
 
-        -- Cek Limit
+        -- Cek batas pembelian
         local currentCount = getgenv().PURCHASED_LOG[id] or 0
         if isTargetItem and currentCount < getgenv().MAX_BUY_PER_ITEM then
             LAST_PURCHASE_TIME = tick()
@@ -56,7 +38,7 @@ ProximityPromptService.PromptShown:Connect(function(prompt)
             pcall(function()
                 fireproximityprompt(prompt)
                 getgenv().PURCHASED_LOG[id] = currentCount + 1
-                print("KAMIAPA: Beli " .. id .. " (" .. getgenv().PURCHASED_LOG[id] .. "/" .. getgenv().MAX_BUY_PER_ITEM .. ")")
+                print("KAMIAPA: Berhasil beli " .. id .. " (" .. getgenv().PURCHASED_LOG[id] .. "/" .. getgenv().MAX_BUY_PER_ITEM .. ")")
             end)
         end
     end
@@ -80,3 +62,5 @@ task.spawn(function()
         task.wait(5)
     end
 end)
+
+print("KAMIAPA: Skrip Berhasil Dimuat (Tanpa Teleport)!")
