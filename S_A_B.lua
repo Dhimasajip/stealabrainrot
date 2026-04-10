@@ -1,4 +1,4 @@
--- [[ KAMIAPA MAIN SCRIPT - STRICT LIMIT VERSION ]]
+-- [[ KAMIAPA MAIN SCRIPT - ULTIMATE ANTI-SPAM ]]
 if getgenv().__KAMI_APA_MAIN_RUNNING then return end
 getgenv().__KAMI_APA_MAIN_RUNNING = true
 
@@ -11,22 +11,12 @@ local ProximityPromptService = game:GetService("ProximityPromptService")
 local player = Players.LocalPlayer
 
 -- [[ PENGATURAN PEMBATAS ]]
-getgenv().MAX_BUY_PER_ITEM = 5 -- Batas maksimal Anda
-getgenv().PURCHASED_LOG = getgenv().PURCHASED_LOG or {} 
+getgenv().MAX_BUY_PER_ITEM = 5 
+getgenv().PURCHASED_LOG = getgenv().PURCHASED_LOG or {}
+local isProcessing = false -- DEBOUNCE: Mencegah spam klik bersamaan
 
 local HOME_POS = Vector3.new(-410.1356201171875, -6.501974582672119, 208.25595092773438) 
 local RETURN_DISTANCE = 2 
-
--- [[ FUNGSI CEK LIMIT KETAT ]]
-local function isUnderLimit(model)
-    local id = model:GetAttribute("Index") or model.Name
-    local currentCount = getgenv().PURCHASED_LOG[id] or 0
-    
-    if currentCount >= getgenv().MAX_BUY_PER_ITEM then
-        return false
-    end
-    return true
-end
 
 -- [[ STAY AT HOME ]]
 task.spawn(function()
@@ -43,29 +33,39 @@ task.spawn(function()
     end
 end)
 
--- [[ SISTEM PEMBELIAN DENGAN LOCK ]]
+-- [[ SISTEM PEMBELIAN DENGAN ANTI-SPAM KETAT ]]
 ProximityPromptService.PromptShown:Connect(function(prompt)
+    -- 1. Cek apakah skrip sedang memproses pembelian lain
+    if isProcessing then return end
+    
     if prompt.ActionText ~= "Purchase" then return end
     
     local model = prompt:FindFirstAncestorOfClass("Model")
     if model then
         local id = model:GetAttribute("Index") or model.Name
         
-        -- CEK APAKAH ITEM ADA DI TARGET_LIST DAN MASIH DI BAWAH LIMIT
+        -- 2. Cek apakah item ada di TARGET_LIST
         local isTargetItem = false
         for _, v in ipairs(getgenv().TARGET_LIST or {}) do
             if id == v then isTargetItem = true break end
         end
 
-        if isTargetItem and isUnderLimit(model) then
-            task.wait(0.5) -- Jeda aman agar tidak dianggap spamming
+        -- 3. Cek Limit Pembelian
+        local currentCount = getgenv().PURCHASED_LOG[id] or 0
+        if isTargetItem and currentCount < getgenv().MAX_BUY_PER_ITEM then
             
-            -- Lakukan pembelian
-            fireproximityprompt(prompt)
+            isProcessing = true -- Kunci skrip (sedang membeli)
             
-            -- Update Log Pembelian
-            getgenv().PURCHASED_LOG[id] = (getgenv().PURCHASED_LOG[id] or 0) + 1
-            print("KAMIAPA: " .. id .. " dibeli (" .. getgenv().PURCHASED_LOG[id] .. "/" .. getgenv().MAX_BUY_PER_ITEM .. ")")
+            task.wait(0.5) -- Jeda aman sebelum tekan
+            
+            pcall(function()
+                fireproximityprompt(prompt)
+                getgenv().PURCHASED_LOG[id] = (getgenv().PURCHASED_LOG[id] or 0) + 1
+                print("KAMIAPA: Berhasil beli " .. id .. " ke-" .. getgenv().PURCHASED_LOG[id])
+            end)
+            
+            task.wait(1) -- Jeda paksa setelah beli sebelum boleh beli item lain
+            isProcessing = false -- Buka kunci
         end
     end
 end)
@@ -90,4 +90,13 @@ task.spawn(function()
     end
 end)
 
-print("KAMIAPA: Skrip Limit Berhasil Dimuat!")
+-- [[ ANTI-AFK ]]
+task.spawn(function()
+    while true do
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.I, false, game)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.I, false, game)
+        task.wait(300)
+    end
+end)
+
+print("KAMIAPA: Skrip Anti-Spam Berhasil Dimuat!")
