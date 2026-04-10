@@ -11,7 +11,7 @@ local ProximityPromptService = game:GetService("ProximityPromptService")
 local player = Players.LocalPlayer
 
 -- [[ PENGATURAN PEMBATAS ]]
-getgenv().MAX_BUY_PER_ITEM = 15 -- Batas maksimal Anda
+getgenv().MAX_BUY_PER_ITEM = 5 -- Batas maksimal Anda
 getgenv().PURCHASED_LOG = getgenv().PURCHASED_LOG or {} 
 
 local HOME_POS = Vector3.new(-410.1356201171875, -6.501974582672119, 208.25595092773438) 
