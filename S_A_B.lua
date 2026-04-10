@@ -1,4 +1,4 @@
--- [[ KAMIAPA MAIN SCRIPT - ULTIMATE ANTI-SPAM ]]
+-- [[ KAMIAPA MAIN SCRIPT - TIME-LOCK VERSION ]]
 if getgenv().__KAMI_APA_MAIN_RUNNING then return end
 getgenv().__KAMI_APA_MAIN_RUNNING = true
 
@@ -11,12 +11,12 @@ local ProximityPromptService = game:GetService("ProximityPromptService")
 local player = Players.LocalPlayer
 
 -- [[ PENGATURAN PEMBATAS ]]
-getgenv().MAX_BUY_PER_ITEM = 5 
+getgenv().MAX_BUY_PER_ITEM = 5
 getgenv().PURCHASED_LOG = getgenv().PURCHASED_LOG or {}
-local isProcessing = false -- DEBOUNCE: Mencegah spam klik bersamaan
+local LAST_PURCHASE_TIME = 0
+local COOLDOWN_TIME = 2 -- Jeda 2 detik antar pembelian (Atur sesuai keinginan)
 
 local HOME_POS = Vector3.new(-410.1356201171875, -6.501974582672119, 208.25595092773438) 
-local RETURN_DISTANCE = 2 
 
 -- [[ STAY AT HOME ]]
 task.spawn(function()
@@ -24,48 +24,45 @@ task.spawn(function()
         local char = player.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
         if root then
-            local targetPos = Vector3.new(HOME_POS.X, root.Position.Y, HOME_POS.Z)
-            if (root.Position - targetPos).Magnitude >= RETURN_DISTANCE then
-                root.CFrame = CFrame.new(targetPos)
-            end
+            root.CFrame = CFrame.new(HOME_POS.X, root.Position.Y, HOME_POS.Z)
         end
-        task.wait(0.1)
+        task.wait(0.5)
     end
 end)
 
--- [[ SISTEM PEMBELIAN DENGAN ANTI-SPAM KETAT ]]
+-- [[ SISTEM PEMBELIAN DENGAN TIME-LOCK ]]
 ProximityPromptService.PromptShown:Connect(function(prompt)
-    -- 1. Cek apakah skrip sedang memproses pembelian lain
-    if isProcessing then return end
-    
     if prompt.ActionText ~= "Purchase" then return end
+    
+    -- CEK 1: Apakah baru saja membeli? (Anti-Spam Waktu)
+    if (tick() - LAST_PURCHASE_TIME) < COOLDOWN_TIME then return end
     
     local model = prompt:FindFirstAncestorOfClass("Model")
     if model then
         local id = model:GetAttribute("Index") or model.Name
         
-        -- 2. Cek apakah item ada di TARGET_LIST
+        -- CEK 2: Apakah ada di TARGET_LIST?
         local isTargetItem = false
         for _, v in ipairs(getgenv().TARGET_LIST or {}) do
             if id == v then isTargetItem = true break end
         end
 
-        -- 3. Cek Limit Pembelian
-        local currentCount = getgenv().PURCHASED_LOG[id] or 0
-        if isTargetItem and currentCount < getgenv().MAX_BUY_PER_ITEM then
-            
-            isProcessing = true -- Kunci skrip (sedang membeli)
-            
-            task.wait(0.5) -- Jeda aman sebelum tekan
-            
-            pcall(function()
-                fireproximityprompt(prompt)
-                getgenv().PURCHASED_LOG[id] = (getgenv().PURCHASED_LOG[id] or 0) + 1
-                print("KAMIAPA: Berhasil beli " .. id .. " ke-" .. getgenv().PURCHASED_LOG[id])
-            end)
-            
-            task.wait(1) -- Jeda paksa setelah beli sebelum boleh beli item lain
-            isProcessing = false -- Buka kunci
+        if isTargetItem then
+            -- CEK 3: Apakah sudah mencapai limit?
+            local currentCount = getgenv().PURCHASED_LOG[id] or 0
+            if currentCount < getgenv().MAX_BUY_PER_ITEM then
+                
+                -- KUNCI WAKTU SEKARANG
+                LAST_PURCHASE_TIME = tick()
+                
+                task.wait(0.1) -- Jeda sangat singkat untuk sinkronisasi
+                
+                pcall(function()
+                    fireproximityprompt(prompt)
+                    getgenv().PURCHASED_LOG[id] = currentCount + 1
+                    print("KAMIAPA: Beli " .. id .. " (" .. getgenv().PURCHASED_LOG[id] .. "/" .. getgenv().MAX_BUY_PER_ITEM .. ")")
+                end)
+            end
         end
     end
 end)
@@ -77,10 +74,9 @@ task.spawn(function()
         local backpack = player:FindFirstChildOfClass("Backpack")
         if char and backpack then
             local hum = char:FindFirstChildOfClass("Humanoid")
-            local hasTool = char:FindFirstChildOfClass("Tool")
-            if not hasTool then
+            if not char:FindFirstChildOfClass("Tool") then
                 for _, t in ipairs(backpack:GetChildren()) do
-                    if string.find(string.lower(t.Name), "speed") or string.find(string.lower(t.Name), "coil") then
+                    if string.find(string.lower(t.Name), "coil") or string.find(string.lower(t.Name), "speed") then
                         hum:EquipTool(t) break
                     end
                 end
@@ -98,5 +94,3 @@ task.spawn(function()
         task.wait(300)
     end
 end)
-
-print("KAMIAPA: Skrip Anti-Spam Berhasil Dimuat!")
