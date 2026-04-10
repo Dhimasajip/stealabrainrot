@@ -1,4 +1,4 @@
--- [[ KAMIAPA MAIN SCRIPT ]]
+-- [[ KAMIAPA MAIN SCRIPT - FULL VERSION ]]
 if getgenv().__KAMI_APA_MAIN_RUNNING then return end
 getgenv().__KAMI_APA_MAIN_RUNNING = true
 
@@ -10,23 +10,29 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local player = Players.LocalPlayer
 
--- Koordinat Home [cite: 1]
+-- [[ KOORDINAT HOME ]]
 local HOME_POS = Vector3.new(-410.1356201171875, -6.501974582672119, 208.25595092773438) 
 local RETURN_DISTANCE = 2 
 
--- Logika Stay & Return on Hit
+-- [[ LOGIKA STAY & RETURN ON HIT ]]
 task.spawn(function()
     local lastHealth = 100
     while true do
         local char = player.Character
         local hum = char and char:FindFirstChildOfClass("Humanoid")
         local root = char and char:FindFirstChild("HumanoidRootPart")
+
         if hum and root and hum.Health > 0 then
-            local targetPos = Vector3.new(HOME_POS.X, root.Position.Y, HOME_POS.Z)
-            if hum.Health < lastHealth then -- Fitur Return on Hit
+            local currentPos = root.Position
+            local targetPos = Vector3.new(HOME_POS.X, currentPos.Y, HOME_POS.Z)
+            
+            -- Jika darah berkurang (kena hit), teleport balik
+            if hum.Health < lastHealth then
                 root.CFrame = CFrame.new(targetPos)
             end
-            if (root.Position - targetPos).Magnitude >= RETURN_DISTANCE then
+
+            -- Jika menjauh dari titik home
+            if (currentPos - targetPos).Magnitude >= RETURN_DISTANCE then
                 hum:MoveTo(targetPos)
             end
             lastHealth = hum.Health
@@ -35,21 +41,19 @@ task.spawn(function()
     end
 end)
 
--- Sistem Purchase [cite: 1]
-ProximityPromptService.PromptShown:Connect(function(prompt)
-    if prompt.ActionText ~= "Purchase" then return end
-    local model = prompt:FindFirstAncestorOfClass("Model")
-    if model and getgenv().TARGET_LIST then
-        for _, v in ipairs(getgenv().TARGET_LIST) do
-            if (model:GetAttribute("Index") or model.Name) == v then
-                task.wait(0.05)
-                fireproximityprompt(prompt)
+-- [[ SISTEM PURCHASE ]]
+workspace.DescendantAdded:Connect(function(o)
+    if o:IsA("Model") and getgenv().TARGET_LIST then
+        local idx = o:GetAttribute("Index") or o.Name
+        for _,v in ipairs(getgenv().TARGET_LIST) do
+            if idx == v then
+                table.insert(getgenv().TARGET_QUEUE or {}, o)
             end
         end
     end
 end)
 
--- Anti-AFK [cite: 1]
+-- [[ ANTI-AFK ]]
 task.spawn(function()
     while true do
         VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.I, false, game)
