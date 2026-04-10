@@ -10,7 +10,7 @@ local ProximityPromptService = game:GetService("ProximityPromptService")
 local player = Players.LocalPlayer
 
 -- [[ PENGATURAN PEMBATAS ]]
-getgenv().MAX_BUY_PER_ITEM = 15 
+getgenv().MAX_BUY_PER_ITEM = 5 
 getgenv().PURCHASED_LOG = getgenv().PURCHASED_LOG or {} 
 local LAST_PURCHASE_TIME = 0
 local COOLDOWN_TIME = 1.5 
