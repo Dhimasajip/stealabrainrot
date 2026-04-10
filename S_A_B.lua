@@ -1,4 +1,4 @@
--- [[ KAMIAPA MAIN SCRIPT - TIME-LOCK VERSION ]]
+-- [[ KAMIAPA MAIN SCRIPT - FINAL STABLE ]]
 if getgenv().__KAMI_APA_MAIN_RUNNING then return end
 getgenv().__KAMI_APA_MAIN_RUNNING = true
 
@@ -6,63 +6,58 @@ task.wait(2)
 repeat task.wait() until game:IsLoaded()
 
 local Players = game:GetService("Players")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local player = Players.LocalPlayer
 
--- [[ PENGATURAN PEMBATAS ]]
-getgenv().MAX_BUY_PER_ITEM = 5
-getgenv().PURCHASED_LOG = getgenv().PURCHASED_LOG or {}
+-- [[ PENGATURAN PEMBATAS & POSISI ]]
+getgenv().MAX_BUY_PER_ITEM = 15 --
+getgenv().PURCHASED_LOG = getgenv().PURCHASED_LOG or {} 
 local LAST_PURCHASE_TIME = 0
-local COOLDOWN_TIME = 2 -- Jeda 2 detik antar pembelian (Atur sesuai keinginan)
+local COOLDOWN_TIME = 1.5 
 
-local HOME_POS = Vector3.new(-410.1356201171875, -6.501974582672119, 208.25595092773438) 
+-- GANTI KOORDINAT DI BAWAH INI SESUAI TEMPAT BERDIRI KAMU
+local HOME_POS = Vector3.new(-410.13562, -6.50197, 208.25595) --
 
--- [[ STAY AT HOME ]]
+-- [[ STAY AT HOME (ANTI-TELEPORT SPAM) ]]
 task.spawn(function()
     while true do
         local char = player.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
         if root then
-            root.CFrame = CFrame.new(HOME_POS.X, root.Position.Y, HOME_POS.Z)
+            -- Hanya teleport jika jarak karakter terlalu jauh dari titik aman
+            if (root.Position - HOME_POS).Magnitude > 3 then 
+                root.CFrame = CFrame.new(HOME_POS)
+            end
         end
-        task.wait(0.5)
+        task.wait(1)
     end
 end)
 
--- [[ SISTEM PEMBELIAN DENGAN TIME-LOCK ]]
+-- [[ SISTEM PEMBELIAN DENGAN LOCK KETAT ]]
 ProximityPromptService.PromptShown:Connect(function(prompt)
     if prompt.ActionText ~= "Purchase" then return end
-    
-    -- CEK 1: Apakah baru saja membeli? (Anti-Spam Waktu)
     if (tick() - LAST_PURCHASE_TIME) < COOLDOWN_TIME then return end
     
     local model = prompt:FindFirstAncestorOfClass("Model")
     if model then
         local id = model:GetAttribute("Index") or model.Name
         
-        -- CEK 2: Apakah ada di TARGET_LIST?
+        -- Cek Target List
         local isTargetItem = false
         for _, v in ipairs(getgenv().TARGET_LIST or {}) do
             if id == v then isTargetItem = true break end
         end
 
-        if isTargetItem then
-            -- CEK 3: Apakah sudah mencapai limit?
-            local currentCount = getgenv().PURCHASED_LOG[id] or 0
-            if currentCount < getgenv().MAX_BUY_PER_ITEM then
-                
-                -- KUNCI WAKTU SEKARANG
-                LAST_PURCHASE_TIME = tick()
-                
-                task.wait(0.1) -- Jeda sangat singkat untuk sinkronisasi
-                
-                pcall(function()
-                    fireproximityprompt(prompt)
-                    getgenv().PURCHASED_LOG[id] = currentCount + 1
-                    print("KAMIAPA: Beli " .. id .. " (" .. getgenv().PURCHASED_LOG[id] .. "/" .. getgenv().MAX_BUY_PER_ITEM .. ")")
-                end)
-            end
+        -- Cek Limit
+        local currentCount = getgenv().PURCHASED_LOG[id] or 0
+        if isTargetItem and currentCount < getgenv().MAX_BUY_PER_ITEM then
+            LAST_PURCHASE_TIME = tick()
+            task.wait(0.1)
+            pcall(function()
+                fireproximityprompt(prompt)
+                getgenv().PURCHASED_LOG[id] = currentCount + 1
+                print("KAMIAPA: Beli " .. id .. " (" .. getgenv().PURCHASED_LOG[id] .. "/" .. getgenv().MAX_BUY_PER_ITEM .. ")")
+            end)
         end
     end
 end)
@@ -83,14 +78,5 @@ task.spawn(function()
             end
         end
         task.wait(5)
-    end
-end)
-
--- [[ ANTI-AFK ]]
-task.spawn(function()
-    while true do
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.I, false, game)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.I, false, game)
-        task.wait(300)
     end
 end)
