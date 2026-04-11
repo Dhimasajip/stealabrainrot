@@ -1,8 +1,8 @@
 if getgenv().__KAMI_APA_MAIN_RUNNING then return end
-getgenv().__KAMI_APA_MAIN_RUNNING = true
+getgenv().__KAMI_APA_MAIN_RUNNING = true [cite: 1]
 
 task.wait(5)
-repeat task.wait() until game:IsLoaded()
+repeat task.wait() until game:IsLoaded() [cite: 1]
 
 local Players = game:GetService("Players")
 local VirtualInputManager = game:GetService("VirtualInputManager")
@@ -10,24 +10,24 @@ local ProximityPromptService = game:GetService("ProximityPromptService")
 
 local player = Players.LocalPlayer
 local HOME_POS = Vector3.new(-410.1356201171875, -6.501974582672119, 208.25595092773438) [cite: 4]
-local RETURN_DISTANCE = 5
+local RETURN_DISTANCE = 5 [cite: 4]
 
 -- Konfigurasi Global
-getgenv().TARGET_LIST = getgenv().TARGET_LIST or {}
+getgenv().TARGET_LIST = getgenv().TARGET_LIST or {} [cite: 1]
 getgenv().FORGOTTEN_UNITS = {}
 getgenv().UNIT_SPAWN_COUNT = {}
 getgenv().SEEN_UNIT_INSTANCES = {}
-getgenv().MAX_SPAWN_BEFORE_FORGET = 12
+getgenv().MAX_SPAWN_BEFORE_FORGET = 5
 getgenv().GRAB_RADIUS = 25
 getgenv().TARGET_TIMEOUT = 50
 getgenv().CHASE_DELAY = 0.5
 getgenv().TARGET_QUEUE = {}
 getgenv().currentTarget = nil
 getgenv().targetStartTime = 0
-getgenv().TARGET_SPAWN_TIME = {}
+getgenv().TARGET_SPAWN_TIME = {} [cite: 1]
 
 local function getUnitID(m)
-	return m:GetAttribute("Index") or m.Name
+	return m:GetAttribute("Index") or m.Name [cite: 1]
 end
 
 local function canProcessUnit(m)
@@ -49,12 +49,11 @@ local function isTarget(m)
 	local idx = m:GetAttribute("Index")
 	if not idx then return false end
 	for _,v in ipairs(getgenv().TARGET_LIST) do
-		if idx == v then return canProcessUnit(m) end
+		if idx == v then return canProcessUnit(m) end [cite: 2]
 	end
 	return false
 end
 
--- Fungsi Pendukung (Targeting & Cash)
 local function getTargetPart(model)
 	if model.PrimaryPart then return model.PrimaryPart end
 	for _,d in ipairs(model:GetDescendants()) do
@@ -79,7 +78,7 @@ workspace.DescendantAdded:Connect(function(o)
 	if o:IsA("Model") and isTarget(o) then addTarget(o) end
 end)
 
--- Logika Kembali ke Titik Awal & Deteksi Hit
+-- LOGIKA RETURN SAAT TERKENA HIT (DARAH BERKURANG)
 local lastHealth = 100
 local function setupReturnLogic(char)
 	local hum = char:WaitForChild("Humanoid")
@@ -88,7 +87,7 @@ local function setupReturnLogic(char)
 
 	hum.HealthChanged:Connect(function(newHealth)
 		if newHealth < lastHealth then
-			-- Jika terkena hit, paksa kembali ke HOME_POS [cite: 4]
+			-- Jika darah berkurang (kena hit), langsung balik ke HOME_POS
 			local target = Vector3.new(HOME_POS.X, root.Position.Y, HOME_POS.Z)
 			hum:MoveTo(target)
 		end
@@ -99,7 +98,7 @@ end
 player.CharacterAdded:Connect(setupReturnLogic)
 if player.Character then setupReturnLogic(player.Character) end
 
--- Loop Utama Kembali ke Home (Setiap 1 detik)
+-- LOOP RETURN JARAK (SETIAP 1 DETIK)
 task.spawn(function()
 	while true do
 		local char = player.Character
@@ -116,15 +115,28 @@ task.spawn(function()
 	end
 end)
 
--- Anti AFK & Purchase Logic (Sesuai File Asli) [cite: 3, 5]
+-- FIX ERROR "NIL VALUE" PADA PROXIMITY PROMPT
 ProximityPromptService.PromptShown:Connect(function(prompt)
-	if prompt.ActionText ~= "Purchase" then return end
+	if prompt.ActionText ~= "Purchase" then return end [cite: 3]
 	local model = prompt:FindFirstAncestorOfClass("Model")
 	if not model or not isTarget(model) then return end
+
 	task.wait(0.05)
-	pcall(function() fireproximityprompt(prompt) end)
+
+	-- Menggunakan pcall dan pengecekan fungsi agar tidak error di executor tertentu
+	if fireproximityprompt then
+		pcall(function() fireproximityprompt(prompt) end)
+	else
+		-- Alternatif jika fireproximityprompt tidak ada
+		pcall(function()
+			prompt:InputHoldBegin()
+			task.wait(prompt.HoldDuration + 0.1)
+			prompt:InputHoldEnd()
+		end)
+	end
 end)
 
+-- ANTI AFK (KAMERA ZOOM I/O)
 task.spawn(function()
 	while true do
 		local char = player.Character
@@ -139,6 +151,33 @@ task.spawn(function()
 				VirtualInputManager:SendKeyEvent(false,Enum.KeyCode.O,false,game)
 			end
 		end
-		task.wait(360)
+		task.wait(360) [cite: 5]
 	end
 end)
+
+-- AUTO EQUIP SPEED COIL
+if not getgenv().__KAMI_APA_AUTO_SPEED_COIL then
+	getgenv().__KAMI_APA_AUTO_SPEED_COIL = true
+
+	local function equipSpeedCoil()
+		local char = player.Character
+		if not char then return end
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		local backpack = player:FindFirstChildOfClass("Backpack")
+		if not hum or not backpack then return end
+
+		for _,tool in ipairs(backpack:GetChildren()) do
+			if tool:IsA("Tool") and string.find(string.lower(tool.Name),"speed") then
+				hum:EquipTool(tool)
+				break
+			end
+		end
+	end
+
+	task.spawn(function()
+		while true do
+			equipSpeedCoil()
+			task.wait(1)
+		end
+	end)
+end
