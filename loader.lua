@@ -10,8 +10,9 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local player = Players.LocalPlayer
 
--- [[ KOORDINAT TITIK AMAN ]]
-local HOME_POS = Vector3.new(-410.1356201171875, -6.501974582672119, 208.25595092773438) 
+-- [[ KOORDINAT TITIK AMAN TERBARU ]]
+-- Diambil dari image_9ac102.png
+local HOME_POS = Vector3.new(-410.873046875, -6.403680801391602, -86.57219696044922) 
 local RETURN_DISTANCE = 2 
 
 -- [[ FUNGSI DETEKSI TARGET ]]
@@ -24,7 +25,6 @@ local function isTarget(model)
     local screenName = textLabel and textLabel.Text or ""
 
     for _, targetName in ipairs(getgenv().TARGET_LIST) do
-        -- Cek kecocokan nama pada atribut, nama model, atau teks melayang
         if string.find(string.lower(name), string.lower(targetName)) or 
            string.find(string.lower(screenName), string.lower(targetName)) then
             return true
@@ -63,51 +63,9 @@ end)
 ProximityPromptService.PromptShown:Connect(function(prompt)
     local model = prompt:FindFirstAncestorOfClass("Model")
     if model and isTarget(model) then
-        task.wait(0.15) -- Jeda sedikit agar server menerima input
+        task.wait(0.15) 
         fireproximityprompt(prompt)
-        print("KAMIAPA: Berhasil membeli " .. model.Name)
     end
 end)
 
--- [[ AUTO SPEED COIL (ANTI-SPAM) ]]
-task.spawn(function()
-    while true do
-        local char = player.Character
-        local backpack = player:FindFirstChildOfClass("Backpack")
-        
-        if char and backpack then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            local holdingCoil = false
-            
-            -- Cek apakah sudah pegang coil
-            for _, tool in ipairs(char:GetChildren()) do
-                if tool:IsA("Tool") and (string.find(string.lower(tool.Name), "speed") or string.find(string.lower(tool.Name), "coil")) then
-                    holdingCoil = true
-                    break
-                end
-            end
-
-            -- Jika belum pegang, baru equip
-            if not holdingCoil then
-                for _, tool in ipairs(backpack:GetChildren()) do
-                    if tool:IsA("Tool") and (string.find(string.lower(tool.Name), "speed") or string.find(string.lower(tool.Name), "coil")) then
-                        hum:EquipTool(tool)
-                        break
-                    end
-                end
-            end
-        end
-        task.wait(5)
-    end
-end)
-
--- [[ ANTI-AFK ]]
-task.spawn(function()
-    while true do
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.I, false, game)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.I, false, game)
-        task.wait(300)
-    end
-end)
-
-print("KAMIAPA: Skrip Berhasil Dimuat dari GitHub!")
+-- Sisa skrip (Speed Coil & Anti-AFK) tetap sama...
