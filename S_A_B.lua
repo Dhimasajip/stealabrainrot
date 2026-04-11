@@ -1,4 +1,4 @@
--- [[ KAMIAPA MAIN SCRIPT - ULTIMATE LIMIT LOCK ]]
+-- [[ KAMIAPA MAIN SCRIPT - FINAL NAME-BASED LOCK ]]
 if getgenv().__KAMI_APA_MAIN_RUNNING then return end
 getgenv().__KAMI_APA_MAIN_RUNNING = true
 
@@ -13,51 +13,61 @@ local player = Players.LocalPlayer
 getgenv().MAX_BUY_PER_ITEM = 5 --
 getgenv().PURCHASED_LOG = getgenv().PURCHASED_LOG or {} 
 local LAST_PURCHASE_TIME = 0
-local COOLDOWN_TIME = 2 
+local COOLDOWN_TIME = 2.5 
 
--- [[ FUNGSI PENYARINGAN KETAT ]]
-local function getCategory(model)
-    local name = tostring(model:GetAttribute("Index") or model.Name):lower()
+-- [[ FUNGSI MENDAPATKAN NAMA ASLI UNIT ]]
+local function getRealUnitName(model)
+    -- Mencari BillboardGui yang berisi nama unit di atas kepalanya
+    local billboard = model:FindFirstChildOfClass("BillboardGui")
+    local textLabel = billboard and billboard:FindFirstChildOfClass("TextLabel")
     
-    -- Cari apakah nama unit mengandung kata dari TARGET_LIST
-    if getgenv().TARGET_LIST then
-        for _, target in ipairs(getgenv().TARGET_LIST) do
-            if string.find(name, target:lower()) then
-                return target:lower() -- Mengunci ke nama di TARGET_LIST
-            end
-        end
+    if textLabel and textLabel.Text ~= "" then
+        return string.lower(textLabel.Text) -- Mengambil nama yang kamu lihat di game
     end
-    return nil
+    
+    -- Jika tidak ada Billboard, gunakan atribut atau nama model sebagai cadangan
+    local fallback = model:GetAttribute("Index") or model.Name
+    return string.lower(tostring(fallback))
 end
 
--- [[ SISTEM PEMBELIAN DENGAN DOUBLE CHECK ]]
+-- [[ SISTEM PEMBELIAN DENGAN FILTER NAMA ]]
 ProximityPromptService.PromptShown:Connect(function(prompt)
     if prompt.ActionText ~= "Purchase" then return end
     if (tick() - LAST_PURCHASE_TIME) < COOLDOWN_TIME then return end
     
     local model = prompt:FindFirstAncestorOfClass("Model")
     if model then
-        local category = getCategory(model)
+        local unitName = getRealUnitName(model)
         
-        -- Hanya proses jika item ada di TARGET_LIST
-        if category then
-            -- CEK LIMIT: Jika sudah 5 atau lebih, matikan tombolnya
-            local currentCount = getgenv().PURCHASED_LOG[category] or 0
-            if currentCount >= getgenv().MAX_BUY_PER_ITEM then
-                prompt.Enabled = false
-                prompt:Destroy() -- Hapus prompt agar tidak bisa ditekan manual
-                return 
+        -- Cek apakah unit ini ada dalam TARGET_LIST kamu
+        local isTarget = false
+        local targetKey = ""
+        for _, t in ipairs(getgenv().TARGET_LIST or {}) do
+            if string.find(unitName, string.lower(t)) then
+                isTarget = true
+                targetKey = string.lower(t) -- Simpan nama target sebagai kunci log
+                break
             end
+        end
 
-            -- EKSEKUSI BELI
-            LAST_PURCHASE_TIME = tick()
-            task.wait(0.2)
+        if isTarget then
+            -- CEK LIMIT BERDASARKAN NAMA TARGET (Bukan ID Acak)
+            local currentCount = getgenv().PURCHASED_LOG[targetKey] or 0
             
-            pcall(function()
-                fireproximityprompt(prompt)
-                getgenv().PURCHASED_LOG[category] = currentCount + 1
-                warn("KAMIAPA: " .. category .. " dibeli (" .. getgenv().PURCHASED_LOG[category] .. "/5)")
-            end)
+            if currentCount < getgenv().MAX_BUY_PER_ITEM then
+                LAST_PURCHASE_TIME = tick()
+                task.wait(0.2)
+                
+                pcall(function()
+                    fireproximityprompt(prompt)
+                    getgenv().PURCHASED_LOG[targetKey] = currentCount + 1
+                    warn("KAMIAPA: Berhasil beli " .. targetKey .. " (" .. getgenv().PURCHASED_LOG[targetKey] .. "/5)")
+                end)
+            else
+                -- Jika sudah 5, hapus tombolnya agar tidak bisa diklik lagi
+                prompt.Enabled = false
+                prompt:Destroy()
+            end
         end
     end
 end)
@@ -80,3 +90,5 @@ task.spawn(function()
         task.wait(5)
     end
 end)
+
+print("KAMIAPA: Skrip Name-Based Lock Berhasil Dimuat!")
