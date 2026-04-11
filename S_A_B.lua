@@ -1,4 +1,4 @@
--- [[ KAMIAPA MAIN SCRIPT - AUTO MOVE + STRICT LIMIT ]]
+-- [[ KAMIAPA MAIN SCRIPT - AUTO MOVE + EDITABLE LIMIT ]]
 if getgenv().__KAMI_APA_MAIN_RUNNING then return end
 getgenv().__KAMI_APA_MAIN_RUNNING = true
 
@@ -9,32 +9,43 @@ local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local player = Players.LocalPlayer
 
--- [[ PENGATURAN ]]
-getgenv().MAX_BUY_PER_ITEM = 5 -- Bisa kamu ubah sesuai kebutuhan
+-- [[ PENGATURAN LIMIT - BISA KAMU UBAH ]]
+getgenv().MAX_BUY_PER_ITEM = 5 -- Ganti angka ini untuk mengatur max pembelian
 getgenv().PURCHASED_LOG = getgenv().PURCHASED_LOG or {} 
+
 local LAST_PURCHASE_TIME = 0
 local COOLDOWN_TIME = 2.5 
 
--- [[ FUNGSI PENYARINGAN & LIMIT ]]
-local function checkTarget(prompt)
+-- [[ FUNGSI IDENTIFIKASI NAMA UNIT ]]
+local function getUnitName(model)
+    -- Mencari nama dari BillboardGui (tulisan di atas unit)
+    local billboard = model:FindFirstChildOfClass("BillboardGui")
+    local textLabel = billboard and billboard:FindFirstChildOfClass("TextLabel")
+    
+    if textLabel and textLabel.Text ~= "" then
+        return string.lower(textLabel.Text)
+    end
+    
+    -- Cadangan jika tidak ada Billboard
+    return string.lower(model:GetAttribute("Index") or model.Name)
+end
+
+-- [[ SISTEM CEK TARGET & LIMIT ]]
+local function isValidTarget(prompt)
     if prompt.ActionText ~= "Purchase" then return nil end
     
     local model = prompt:FindFirstAncestorOfClass("Model")
     if not model then return nil end
     
-    -- Ambil Nama dari Billboard (Nama Visual) atau Model
-    local billboard = model:FindFirstChildOfClass("BillboardGui")
-    local textLabel = billboard and billboard:FindFirstChildOfClass("TextLabel")
-    local rawName = textLabel and textLabel.Text or model.Name
-    local cleanName = string.lower(tostring(rawName))
+    local unitName = getUnitName(model)
     
-    -- Cari kecocokan di TARGET_LIST
-    for _, t in ipairs(getgenv().TARGET_LIST or {}) do
-        local targetLower = string.lower(t)
-        if string.find(cleanName, targetLower) then
-            -- CEK LIMIT: Jika sudah mencapai batas, jangan diproses
-            local count = getgenv().PURCHASED_LOG[targetLower] or 0
-            if count < getgenv().MAX_BUY_PER_ITEM then
+    -- Cek apakah unit masuk dalam daftar TARGET_LIST
+    for _, target in ipairs(getgenv().TARGET_LIST or {}) do
+        local targetLower = string.lower(target)
+        if string.find(unitName, targetLower) then
+            -- CEK LIMIT PEMBELIAN
+            local currentCount = getgenv().PURCHASED_LOG[targetLower] or 0
+            if currentCount < getgenv().MAX_BUY_PER_ITEM then
                 return targetLower
             end
         end
@@ -42,33 +53,33 @@ local function checkTarget(prompt)
     return nil
 end
 
--- [[ LOOPING PERGERAKAN OTOMATIS ]]
+-- [[ LOOPING PERGERAKAN (DARI SKRIP LAMA) ]]
 task.spawn(function()
     while true do
         local char = player.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
         
         if root then
-            -- Cari ProximityPrompt terdekat yang valid (belum limit)
+            -- Cari item valid di workspace
             for _, prompt in ipairs(workspace:GetDescendants()) do
                 if prompt:IsA("ProximityPrompt") then
-                    local targetKey = checkTarget(prompt)
+                    local targetKey = isValidTarget(prompt)
                     
                     if targetKey then
-                        -- Teleport ke lokasi unit
+                        -- Teleport langsung ke unit (seperti skrip lama kamu)
                         root.CFrame = prompt.Parent.CFrame * CFrame.new(0, 3, 0)
                         
-                        -- Eksekusi Beli jika sudah dekat
+                        -- Eksekusi Beli
                         if (tick() - LAST_PURCHASE_TIME) > COOLDOWN_TIME then
                             LAST_PURCHASE_TIME = tick()
                             task.wait(0.2)
                             fireproximityprompt(prompt)
                             
-                            -- Update Log
+                            -- Update hitungan ke log
                             getgenv().PURCHASED_LOG[targetKey] = (getgenv().PURCHASED_LOG[targetKey] or 0) + 1
-                            warn("KAMIAPA: Beli " .. targetKey .. " (" .. getgenv().PURCHASED_LOG[targetKey] .. "/" .. getgenv().MAX_BUY_PER_ITEM .. ")")
+                            warn("KAMIAPA: Berhasil beli " .. targetKey .. " (" .. getgenv().PURCHASED_LOG[targetKey] .. "/" .. getgenv().MAX_BUY_PER_ITEM .. ")")
                         end
-                        break -- Fokus ke satu target dulu
+                        break -- Fokus beli satu ini dulu
                     end
                 end
             end
@@ -77,7 +88,7 @@ task.spawn(function()
     end
 end)
 
--- [[ AUTO SPEED COIL ]]
+-- [[ AUTO SPEED COIL (DARI KAMIAPA-EVENT.TXT) ]]
 task.spawn(function()
     while true do
         local char = player.Character
@@ -87,7 +98,8 @@ task.spawn(function()
             if not char:FindFirstChildOfClass("Tool") then
                 for _, t in ipairs(backpack:GetChildren()) do
                     if string.find(string.lower(t.Name), "coil") or string.find(string.lower(t.Name), "speed") then
-                        hum:EquipTool(t) break
+                        hum:EquipTool(t)
+                        break
                     end
                 end
             end
@@ -96,4 +108,4 @@ task.spawn(function()
     end
 end)
 
-print("KAMIAPA: Skrip Auto-Move + Limit " .. getgenv().MAX_BUY_PER_ITEM .. "x Aktif!")
+print("KAMIAPA: Skrip Auto-Move + Limit Berhasil Dimuat!")
