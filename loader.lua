@@ -1,4 +1,4 @@
--- [[ KAMIAPA MAIN SCRIPT - FULL & FIXED ]]
+-- [[ KAMIAPA MAIN SCRIPT - FIXED PURCHASE ]]
 if getgenv().__KAMI_APA_MAIN_RUNNING then return end
 getgenv().__KAMI_APA_MAIN_RUNNING = true
 
@@ -10,30 +10,25 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local player = Players.LocalPlayer
 
--- [[ KOORDINAT TITIK AMAN ]]
+-- [[ KONFIGURASI POSISI ]]
 local HOME_POS = Vector3.new(-410.1356201171875, -6.501974582672119, 208.25595092773438) 
 local RETURN_DISTANCE = 2 
 
--- [[ FUNGSI DETEKSI TARGET ]]
+-- [[ FUNGSI CEK TARGET ]]
 local function isTarget(model)
     if not getgenv().TARGET_LIST then return false end
     
+    -- Cek berdasarkan Atribut "Index" atau Nama Model
     local name = model:GetAttribute("Index") or model.Name
-    local billboard = model:FindFirstChildOfClass("BillboardGui")
-    local textLabel = billboard and billboard:FindFirstChildOfClass("TextLabel")
-    local screenName = textLabel and textLabel.Text or ""
-
     for _, targetName in ipairs(getgenv().TARGET_LIST) do
-        -- Cek kecocokan nama pada atribut, nama model, atau teks melayang
-        if string.find(string.lower(name), string.lower(targetName)) or 
-           string.find(string.lower(screenName), string.lower(targetName)) then
+        if name == targetName then
             return true
         end
     end
     return false
 end
 
--- [[ STAY AT HOME & RETURN ON HIT ]]
+-- [[ LOGIKA STAY & RETURN ON HIT ]]
 task.spawn(function()
     local lastHealth = 100
     while true do
@@ -42,15 +37,14 @@ task.spawn(function()
         local root = char and char:FindFirstChild("HumanoidRootPart")
 
         if hum and root and hum.Health > 0 then
-            local targetPos = Vector3.new(HOME_POS.X, root.Position.Y, HOME_POS.Z)
+            local currentPos = root.Position
+            local targetPos = Vector3.new(HOME_POS.X, currentPos.Y, HOME_POS.Z)
             
-            -- Balik instan jika dipukul
             if hum.Health < lastHealth then
                 root.CFrame = CFrame.new(targetPos)
             end
 
-            -- Selalu kembali ke titik aman jika terdorong
-            if (root.Position - targetPos).Magnitude >= RETURN_DISTANCE then
+            if (currentPos - targetPos).Magnitude >= RETURN_DISTANCE then
                 hum:MoveTo(targetPos)
             end
             lastHealth = hum.Health
@@ -59,45 +53,17 @@ task.spawn(function()
     end
 end)
 
--- [[ AUTO PURCHASE (ANTI-MISS) ]]
+-- [[ SISTEM AUTO PURCHASE - PERBAIKAN ]]
+-- Fungsi ini akan mendeteksi setiap kali ProximityPrompt (tombol E) muncul
 ProximityPromptService.PromptShown:Connect(function(prompt)
-    local model = prompt:FindFirstAncestorOfClass("Model")
-    if model and isTarget(model) then
-        task.wait(0.15) -- Jeda sedikit agar server menerima input
-        fireproximityprompt(prompt)
-        print("KAMIAPA: Berhasil membeli " .. model.Name)
-    end
-end)
-
--- [[ AUTO SPEED COIL (ANTI-SPAM) ]]
-task.spawn(function()
-    while true do
-        local char = player.Character
-        local backpack = player:FindFirstChildOfClass("Backpack")
-        
-        if char and backpack then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            local holdingCoil = false
-            
-            -- Cek apakah sudah pegang coil
-            for _, tool in ipairs(char:GetChildren()) do
-                if tool:IsA("Tool") and (string.find(string.lower(tool.Name), "speed") or string.find(string.lower(tool.Name), "coil")) then
-                    holdingCoil = true
-                    break
-                end
-            end
-
-            -- Jika belum pegang, baru equip
-            if not holdingCoil then
-                for _, tool in ipairs(backpack:GetChildren()) do
-                    if tool:IsA("Tool") and (string.find(string.lower(tool.Name), "speed") or string.find(string.lower(tool.Name), "coil")) then
-                        hum:EquipTool(tool)
-                        break
-                    end
-                end
-            end
+    -- Pastikan ini adalah prompt untuk membeli
+    if prompt.ActionText == "Purchase" or prompt.ObjectText ~= "" then
+        local model = prompt:FindFirstAncestorOfClass("Model")
+        if model and isTarget(model) then
+            task.wait(0.1) -- Jeda sebentar agar tidak terdeteksi spam
+            fireproximityprompt(prompt)
+            print("Berhasil membeli: " .. model.Name)
         end
-        task.wait(5)
     end
 end)
 
@@ -110,4 +76,4 @@ task.spawn(function()
     end
 end)
 
-print("KAMIAPA: Skrip Berhasil Dimuat dari GitHub!")
+print("KAMIAPA: Skrip Berhasil Dimuat!")
