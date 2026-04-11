@@ -1,4 +1,4 @@
--- [[ KAMIAPA MAIN SCRIPT - STRICT MAX BUY LOCK ]]
+-- [[ KAMIAPA MAIN SCRIPT - ULTIMATE LIMIT LOCK ]]
 if getgenv().__KAMI_APA_MAIN_RUNNING then return end
 getgenv().__KAMI_APA_MAIN_RUNNING = true
 
@@ -7,65 +7,56 @@ repeat task.wait() until game:IsLoaded()
 
 local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 local player = Players.LocalPlayer
 
 -- [[ PENGATURAN PEMBATAS ]]
-getgenv().MAX_BUY_PER_ITEM = 5 -- Sesuai permintaan kamu (5 kali)
+getgenv().MAX_BUY_PER_ITEM = 5 --
 getgenv().PURCHASED_LOG = getgenv().PURCHASED_LOG or {} 
 local LAST_PURCHASE_TIME = 0
-local COOLDOWN_TIME = 2.5 -- Jeda sedikit lebih lama agar sinkronisasi server stabil
+local COOLDOWN_TIME = 2 
 
--- [[ FUNGSI DETEKSI TARGET ]]
-local function isTarget(model)
-    if not getgenv().TARGET_LIST then return false end
+-- [[ FUNGSI PENYARINGAN KETAT ]]
+local function getCategory(model)
+    local name = tostring(model:GetAttribute("Index") or model.Name):lower()
     
-    -- Ambil ID unik (Index atau Name)
-    local rawId = model:GetAttribute("Index") or model.Name
-    local id = string.lower(tostring(rawId)) -- Gunakan lowercase agar konsisten
-    
-    -- CEK LIMIT PEMBELIAN
-    local currentCount = getgenv().PURCHASED_LOG[id] or 0
-    if currentCount >= getgenv().MAX_BUY_PER_ITEM then
-        return false
-    end
-
-    -- Cek apakah ID ada di Target List
-    for _, targetName in ipairs(getgenv().TARGET_LIST) do
-        if string.find(id, string.lower(targetName)) then
-            return true
+    -- Cari apakah nama unit mengandung kata dari TARGET_LIST
+    if getgenv().TARGET_LIST then
+        for _, target in ipairs(getgenv().TARGET_LIST) do
+            if string.find(name, target:lower()) then
+                return target:lower() -- Mengunci ke nama di TARGET_LIST
+            end
         end
     end
-    return false
+    return nil
 end
 
--- [[ AUTO PURCHASE (LOCK VERSION) ]]
+-- [[ SISTEM PEMBELIAN DENGAN DOUBLE CHECK ]]
 ProximityPromptService.PromptShown:Connect(function(prompt)
     if prompt.ActionText ~= "Purchase" then return end
-    
-    -- Anti-Spam Waktu
     if (tick() - LAST_PURCHASE_TIME) < COOLDOWN_TIME then return end
     
     local model = prompt:FindFirstAncestorOfClass("Model")
-    if model and isTarget(model) then
-        local rawId = model:GetAttribute("Index") or model.Name
-        local id = string.lower(tostring(rawId))
+    if model then
+        local category = getCategory(model)
         
-        -- Double Check Limit Sebelum Eksekusi
-        if (getgenv().PURCHASED_LOG[id] or 0) < getgenv().MAX_BUY_PER_ITEM then
+        -- Hanya proses jika item ada di TARGET_LIST
+        if category then
+            -- CEK LIMIT: Jika sudah 5 atau lebih, matikan tombolnya
+            local currentCount = getgenv().PURCHASED_LOG[category] or 0
+            if currentCount >= getgenv().MAX_BUY_PER_ITEM then
+                prompt.Enabled = false
+                prompt:Destroy() -- Hapus prompt agar tidak bisa ditekan manual
+                return 
+            end
+
+            -- EKSEKUSI BELI
             LAST_PURCHASE_TIME = tick()
+            task.wait(0.2)
             
             pcall(function()
                 fireproximityprompt(prompt)
-                
-                -- Update Hitungan
-                getgenv().PURCHASED_LOG[id] = (getgenv().PURCHASED_LOG[id] or 0) + 1
-                
-                print("------------------------------------------")
-                print("KAMIAPA: Berhasil Membeli!")
-                print("Unit: " .. id)
-                print("Status: " .. getgenv().PURCHASED_LOG[id] .. " / " .. getgenv().MAX_BUY_PER_ITEM)
-                print("------------------------------------------")
+                getgenv().PURCHASED_LOG[category] = currentCount + 1
+                warn("KAMIAPA: " .. category .. " dibeli (" .. getgenv().PURCHASED_LOG[category] .. "/5)")
             end)
         end
     end
@@ -89,14 +80,3 @@ task.spawn(function()
         task.wait(5)
     end
 end)
-
--- [[ ANTI-AFK ]]
-task.spawn(function()
-    while true do
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.I, false, game)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.I, false, game)
-        task.wait(300)
-    end
-end)
-
-print("KAMIAPA: Skrip Ter-Update! Limit 5x Aktif.")
