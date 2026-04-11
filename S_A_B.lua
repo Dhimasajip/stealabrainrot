@@ -1,4 +1,4 @@
--- [[ KAMIAPA MAIN SCRIPT - AUTO MOVE + STRICT LIMIT ]]
+-- [[ KAMIAPA MAIN SCRIPT - FULL VERSION FIXED ]]
 if getgenv().__KAMI_APA_MAIN_RUNNING then return end
 getgenv().__KAMI_APA_MAIN_RUNNING = true
 
@@ -6,88 +6,118 @@ task.wait(2)
 repeat task.wait() until game:IsLoaded()
 
 local Players = game:GetService("Players")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local player = Players.LocalPlayer
 
--- [[ PENGATURAN ]]
-getgenv().MAX_BUY_PER_ITEM = 5 -- Bisa kamu ubah sesuai kebutuhan
-getgenv().PURCHASED_LOG = getgenv().PURCHASED_LOG or {} 
-local LAST_PURCHASE_TIME = 0
-local COOLDOWN_TIME = 2.5 
+-- [[ PENGATURAN PEMBATAS & POSISI ]]
+getgenv().MAX_BUY_PER_ITEM = 5 -- Maksimal beli per jenis item (bisa Anda ubah)
+getgenv().PURCHASED_LOG = {}    -- Mencatat jumlah yang sudah dibeli
+local HOME_POS = Vector3.new(-410.1356201171875, -6.501974582672119, 208.25595092773438) 
+local RETURN_DISTANCE = 2 
 
--- [[ FUNGSI PENYARINGAN & LIMIT ]]
-local function checkTarget(prompt)
-    if prompt.ActionText ~= "Purchase" then return nil end
-    
-    local model = prompt:FindFirstAncestorOfClass("Model")
-    if not model then return nil end
-    
-    -- Ambil Nama dari Billboard (Nama Visual) atau Model
-    local billboard = model:FindFirstChildOfClass("BillboardGui")
-    local textLabel = billboard and billboard:FindFirstChildOfClass("TextLabel")
-    local rawName = textLabel and textLabel.Text or model.Name
-    local cleanName = string.lower(tostring(rawName))
-    
-    -- Cari kecocokan di TARGET_LIST
-    for _, t in ipairs(getgenv().TARGET_LIST or {}) do
-        local targetLower = string.lower(t)
-        if string.find(cleanName, targetLower) then
-            -- CEK LIMIT: Jika sudah mencapai batas, jangan diproses
-            local count = getgenv().PURCHASED_LOG[targetLower] or 0
-            if count < getgenv().MAX_BUY_PER_ITEM then
-                return targetLower
-            end
-        end
-    end
-    return nil
+-- [[ INISIALISASI DATA ]]
+getgenv().TARGET_LIST = getgenv().TARGET_LIST or {}
+getgenv().FORGOTTEN_UNITS = {}
+getgenv().UNIT_SPAWN_COUNT = {}
+getgenv().SEEN_UNIT_INSTANCES = {}
+getgenv().MAX_SPAWN_BEFORE_FORGET = 12
+
+-- [[ FUNGSI UTILITY ]]
+local function getUnitID(m)
+    return m:GetAttribute("Index") or m.Name
 end
 
--- [[ LOOPING PERGERAKAN OTOMATIS ]]
+local function canProcessUnit(m)
+    local id = getUnitID(m)
+    if getgenv().SEEN_UNIT_INSTANCES[m] then
+        return not getgenv().FORGOTTEN_UNITS[id]
+    end
+    getgenv().SEEN_UNIT_INSTANCES[m] = true
+    getgenv().UNIT_SPAWN_COUNT[id] = (getgenv().UNIT_SPAWN_COUNT[id] or 0) + 1
+    if getgenv().UNIT_SPAWN_COUNT[id] >= getgenv().MAX_SPAWN_BEFORE_FORGET then
+        getgenv().FORGOTTEN_UNITS[id] = true
+        return false
+    end
+    return true
+end
+
+local function isTarget(m)
+    local id = getUnitID(m)
+    
+    -- CEK 1: Apakah sudah mencapai batas maksimal beli?
+    if (getgenv().PURCHASED_LOG[id] or 0) >= getgenv().MAX_BUY_PER_ITEM then
+        return false
+    end
+    
+    -- CEK 2: Apakah item ini sudah masuk daftar lupakan?
+    if getgenv().FORGOTTEN_UNITS[id] then return false end
+    
+    -- CEK 3: Apakah ada di dalam TARGET_LIST?
+    local idx = m:GetAttribute("Index")
+    if not idx then return false end
+    for _, v in ipairs(getgenv().TARGET_LIST) do
+        if idx == v then 
+            return canProcessUnit(m) 
+        end
+    end
+    return false
+end
+
+-- [[ STAY AT HOME & RETURN ON HIT ]]
 task.spawn(function()
+    local lastHealth = 100
     while true do
         local char = player.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
         local root = char and char:FindFirstChild("HumanoidRootPart")
-        
-        if root then
-            -- Cari ProximityPrompt terdekat yang valid (belum limit)
-            for _, prompt in ipairs(workspace:GetDescendants()) do
-                if prompt:IsA("ProximityPrompt") then
-                    local targetKey = checkTarget(prompt)
-                    
-                    if targetKey then
-                        -- Teleport ke lokasi unit
-                        root.CFrame = prompt.Parent.CFrame * CFrame.new(0, 3, 0)
-                        
-                        -- Eksekusi Beli jika sudah dekat
-                        if (tick() - LAST_PURCHASE_TIME) > COOLDOWN_TIME then
-                            LAST_PURCHASE_TIME = tick()
-                            task.wait(0.2)
-                            fireproximityprompt(prompt)
-                            
-                            -- Update Log
-                            getgenv().PURCHASED_LOG[targetKey] = (getgenv().PURCHASED_LOG[targetKey] or 0) + 1
-                            warn("KAMIAPA: Beli " .. targetKey .. " (" .. getgenv().PURCHASED_LOG[targetKey] .. "/" .. getgenv().MAX_BUY_PER_ITEM .. ")")
-                        end
-                        break -- Fokus ke satu target dulu
-                    end
-                end
+        if hum and root and hum.Health > 0 then
+            local targetPos = Vector3.new(HOME_POS.X, root.Position.Y, HOME_POS.Z)
+            if hum.Health < lastHealth then root.CFrame = CFrame.new(targetPos) end
+            if (root.Position - targetPos).Magnitude >= RETURN_DISTANCE then
+                hum:MoveTo(targetPos)
             end
+            lastHealth = hum.Health
         end
-        task.wait(0.5)
+        task.wait(0.1)
     end
 end)
 
--- [[ AUTO SPEED COIL ]]
+-- [[ SISTEM PEMBELIAN (DENGAN PEMBATAS) ]]
+ProximityPromptService.PromptShown:Connect(function(prompt)
+    if prompt.ActionText ~= "Purchase" then return end
+    
+    local model = prompt:FindFirstAncestorOfClass("Model")
+    if model and isTarget(model) then
+        local id = getUnitID(model)
+        
+        task.wait(0.3) -- Jeda agar server tidak mengira spam
+        pcall(function()
+            fireproximityprompt(prompt)
+            -- Tambah hitungan log setelah berhasil menekan tombol beli
+            getgenv().PURCHASED_LOG[id] = (getgenv().PURCHASED_LOG[id] or 0) + 1
+            print("KAMIAPA: Membeli " .. id .. " (" .. getgenv().PURCHASED_LOG[id] .. "/" .. getgenv().MAX_BUY_PER_ITEM .. ")")
+        end)
+    end
+end)
+
+-- [[ AUTO SPEED COIL (ANTI-SPAM) ]]
 task.spawn(function()
     while true do
         local char = player.Character
         local backpack = player:FindFirstChildOfClass("Backpack")
         if char and backpack then
             local hum = char:FindFirstChildOfClass("Humanoid")
-            if not char:FindFirstChildOfClass("Tool") then
+            local holding = false
+            for _, t in ipairs(char:GetChildren()) do
+                if t:IsA("Tool") and (string.find(string.lower(t.Name), "speed") or string.find(string.lower(t.Name), "coil")) then
+                    holding = true; break
+                end
+            end
+            if not holding then
                 for _, t in ipairs(backpack:GetChildren()) do
-                    if string.find(string.lower(t.Name), "coil") or string.find(string.lower(t.Name), "speed") then
-                        hum:EquipTool(t) break
+                    if t:IsA("Tool") and (string.find(string.lower(t.Name), "speed") or string.find(string.lower(t.Name), "coil")) then
+                        hum:EquipTool(t); break
                     end
                 end
             end
@@ -96,4 +126,13 @@ task.spawn(function()
     end
 end)
 
-print("KAMIAPA: Skrip Auto-Move + Limit " .. getgenv().MAX_BUY_PER_ITEM .. "x Aktif!")
+-- [[ ANTI-AFK ]]
+task.spawn(function()
+    while true do
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.I, false, game)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.I, false, game)
+        task.wait(300)
+    end
+end)
+
+print("KAMIAPA: Skrip Utama Berhasil Dimuat!")
