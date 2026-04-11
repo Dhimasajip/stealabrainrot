@@ -1,4 +1,4 @@
--- [[ KAMIAPA MAIN SCRIPT - FULL & FIXED ]]
+-- [[ KAMIAPA MAIN SCRIPT - COORDINATE FIXED ]]
 if getgenv().__KAMI_APA_MAIN_RUNNING then return end
 getgenv().__KAMI_APA_MAIN_RUNNING = true
 
@@ -10,15 +10,14 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local player = Players.LocalPlayer
 
--- [[ KOORDINAT TITIK AMAN TERBARU ]]
--- Diambil dari image_9ac102.png
+-- [[ KOORDINAT TITIK AMAN BARU ]]
+-- Menggunakan data dari image_9ac102.png
 local HOME_POS = Vector3.new(-410.873046875, -6.403680801391602, -86.57219696044922) 
 local RETURN_DISTANCE = 2 
 
 -- [[ FUNGSI DETEKSI TARGET ]]
 local function isTarget(model)
     if not getgenv().TARGET_LIST then return false end
-    
     local name = model:GetAttribute("Index") or model.Name
     local billboard = model:FindFirstChildOfClass("BillboardGui")
     local textLabel = billboard and billboard:FindFirstChildOfClass("TextLabel")
@@ -33,7 +32,7 @@ local function isTarget(model)
     return false
 end
 
--- [[ STAY AT HOME & RETURN ON HIT ]]
+-- [[ STAY AT HOME - TETAP DI TITIK BARU ]]
 task.spawn(function()
     local lastHealth = 100
     while true do
@@ -42,14 +41,13 @@ task.spawn(function()
         local root = char and char:FindFirstChild("HumanoidRootPart")
 
         if hum and root and hum.Health > 0 then
+            -- Ini yang mengatur agar karakter tetap di koordinat baru
             local targetPos = Vector3.new(HOME_POS.X, root.Position.Y, HOME_POS.Z)
             
-            -- Balik instan jika dipukul
             if hum.Health < lastHealth then
                 root.CFrame = CFrame.new(targetPos)
             end
 
-            -- Selalu kembali ke titik aman jika terdorong
             if (root.Position - targetPos).Magnitude >= RETURN_DISTANCE then
                 hum:MoveTo(targetPos)
             end
@@ -59,7 +57,7 @@ task.spawn(function()
     end
 end)
 
--- [[ AUTO PURCHASE (ANTI-MISS) ]]
+-- [[ AUTO PURCHASE ]]
 ProximityPromptService.PromptShown:Connect(function(prompt)
     local model = prompt:FindFirstAncestorOfClass("Model")
     if model and isTarget(model) then
@@ -68,4 +66,13 @@ ProximityPromptService.PromptShown:Connect(function(prompt)
     end
 end)
 
--- Sisa skrip (Speed Coil & Anti-AFK) tetap sama...
+-- [[ ANTI-AFK ]]
+task.spawn(function()
+    while true do
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.I, false, game)
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.I, false, game)
+        task.wait(300)
+    end
+end)
+
+print("KAMIAPA: Koordinat Baru Berhasil Diterapkan!")
