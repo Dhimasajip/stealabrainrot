@@ -1,4 +1,4 @@
--- [[ KAMIAPA MAIN SCRIPT - NO TELEPORT + MAX BUY ACTIVE ]]
+-- [[ KAMIAPA MAIN SCRIPT - ULTIMATE LIMIT LOCK ]]
 if getgenv().__KAMI_APA_MAIN_RUNNING then return end
 getgenv().__KAMI_APA_MAIN_RUNNING = true
 
@@ -7,54 +7,58 @@ repeat task.wait() until game:IsLoaded()
 
 local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 local player = Players.LocalPlayer
 
 -- [[ PENGATURAN PEMBATAS ]]
-getgenv().MAX_BUY_PER_ITEM = 5 -- Batas maksimal beli per jenis item
+getgenv().MAX_BUY_PER_ITEM = 5 --
 getgenv().PURCHASED_LOG = getgenv().PURCHASED_LOG or {} 
 local LAST_PURCHASE_TIME = 0
 local COOLDOWN_TIME = 2 
 
--- [[ FUNGSI DETEKSI TARGET ]]
-local function isTarget(model)
-    if not getgenv().TARGET_LIST then return false end
-    local name = model:GetAttribute("Index") or model.Name
+-- [[ FUNGSI PENYARINGAN KETAT ]]
+local function getCategory(model)
+    local name = tostring(model:GetAttribute("Index") or model.Name):lower()
     
-    -- Cek apakah sudah mencapai batas beli
-    local currentCount = getgenv().PURCHASED_LOG[name] or 0
-    if currentCount >= getgenv().MAX_BUY_PER_ITEM then
-        return false
-    end
-
-    for _, targetName in ipairs(getgenv().TARGET_LIST) do
-        if string.find(string.lower(name), string.lower(targetName)) then
-            return true
+    -- Cari apakah nama unit mengandung kata dari TARGET_LIST
+    if getgenv().TARGET_LIST then
+        for _, target in ipairs(getgenv().TARGET_LIST) do
+            if string.find(name, target:lower()) then
+                return target:lower() -- Mengunci ke nama di TARGET_LIST
+            end
         end
     end
-    return false
+    return nil
 end
 
--- [[ AUTO PURCHASE (ANTI-SPAM) ]]
+-- [[ SISTEM PEMBELIAN DENGAN DOUBLE CHECK ]]
 ProximityPromptService.PromptShown:Connect(function(prompt)
     if prompt.ActionText ~= "Purchase" then return end
-    
-    -- Jeda waktu agar tidak spam klik berlebihan
     if (tick() - LAST_PURCHASE_TIME) < COOLDOWN_TIME then return end
     
     local model = prompt:FindFirstAncestorOfClass("Model")
-    if model and isTarget(model) then
-        local name = model:GetAttribute("Index") or model.Name
+    if model then
+        local category = getCategory(model)
         
-        LAST_PURCHASE_TIME = tick()
-        task.wait(0.2)
-        
-        pcall(function()
-            fireproximityprompt(prompt)
-            -- Catat pembelian ke log
-            getgenv().PURCHASED_LOG[name] = (getgenv().PURCHASED_LOG[name] or 0) + 1
-            print("KAMIAPA: Beli " .. name .. " (" .. getgenv().PURCHASED_LOG[name] .. "/" .. getgenv().MAX_BUY_PER_ITEM .. ")")
-        end)
+        -- Hanya proses jika item ada di TARGET_LIST
+        if category then
+            -- CEK LIMIT: Jika sudah 5 atau lebih, matikan tombolnya
+            local currentCount = getgenv().PURCHASED_LOG[category] or 0
+            if currentCount >= getgenv().MAX_BUY_PER_ITEM then
+                prompt.Enabled = false
+                prompt:Destroy() -- Hapus prompt agar tidak bisa ditekan manual
+                return 
+            end
+
+            -- EKSEKUSI BELI
+            LAST_PURCHASE_TIME = tick()
+            task.wait(0.2)
+            
+            pcall(function()
+                fireproximityprompt(prompt)
+                getgenv().PURCHASED_LOG[category] = currentCount + 1
+                warn("KAMIAPA: " .. category .. " dibeli (" .. getgenv().PURCHASED_LOG[category] .. "/5)")
+            end)
+        end
     end
 end)
 
@@ -65,8 +69,7 @@ task.spawn(function()
         local backpack = player:FindFirstChildOfClass("Backpack")
         if char and backpack then
             local hum = char:FindFirstChildOfClass("Humanoid")
-            local holding = char:FindFirstChildOfClass("Tool")
-            if not holding then
+            if not char:FindFirstChildOfClass("Tool") then
                 for _, t in ipairs(backpack:GetChildren()) do
                     if string.find(string.lower(t.Name), "coil") or string.find(string.lower(t.Name), "speed") then
                         hum:EquipTool(t) break
@@ -77,14 +80,3 @@ task.spawn(function()
         task.wait(5)
     end
 end)
-
--- [[ ANTI-AFK ]]
-task.spawn(function()
-    while true do
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.I, false, game)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.I, false, game)
-        task.wait(300)
-    end
-end)
-
-print("KAMIAPA: Script Berhasil Dimuat (Max Buy Aktif & No Teleport)!")
