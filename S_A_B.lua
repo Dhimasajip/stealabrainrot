@@ -1,4 +1,4 @@
--- [[ KAMIAPA MAIN SCRIPT - FULL VERSION FIXED ]]
+-- [[ KAMIAPA MAIN SCRIPT - FIXED MAX BUY ]]
 if getgenv().__KAMI_APA_MAIN_RUNNING then return end
 getgenv().__KAMI_APA_MAIN_RUNNING = true
 
@@ -11,8 +11,8 @@ local ProximityPromptService = game:GetService("ProximityPromptService")
 local player = Players.LocalPlayer
 
 -- [[ PENGATURAN PEMBATAS & POSISI ]]
-getgenv().MAX_BUY_PER_ITEM = 1 -- Maksimal beli per jenis item (bisa Anda ubah)
-getgenv().PURCHASED_LOG = {}    -- Mencatat jumlah yang sudah dibeli
+getgenv().MAX_BUY_PER_ITEM = 5 
+getgenv().PURCHASED_LOG = getgenv().PURCHASED_LOG or {}    
 local HOME_POS = Vector3.new(-410.1356201171875, -6.501974582672119, 208.25595092773438) 
 local RETURN_DISTANCE = 2 
 
@@ -21,7 +21,7 @@ getgenv().TARGET_LIST = getgenv().TARGET_LIST or {}
 getgenv().FORGOTTEN_UNITS = {}
 getgenv().UNIT_SPAWN_COUNT = {}
 getgenv().SEEN_UNIT_INSTANCES = {}
-getgenv().MAX_SPAWN_BEFORE_FORGET = 1
+getgenv().MAX_SPAWN_BEFORE_FORGET = 3
 
 -- [[ FUNGSI UTILITY ]]
 local function getUnitID(m)
@@ -45,15 +45,14 @@ end
 local function isTarget(m)
     local id = getUnitID(m)
     
-    -- CEK 1: Apakah sudah mencapai batas maksimal beli?
-    if (getgenv().PURCHASED_LOG[id] or 0) >= getgenv().MAX_BUY_PER_ITEM then
+    -- PERBAIKAN: Cek kuota beli (Strict Check)
+    local currentCount = getgenv().PURCHASED_LOG[id] or 0
+    if currentCount >= getgenv().MAX_BUY_PER_ITEM then
         return false
     end
     
-    -- CEK 2: Apakah item ini sudah masuk daftar lupakan?
     if getgenv().FORGOTTEN_UNITS[id] then return false end
     
-    -- CEK 3: Apakah ada di dalam TARGET_LIST?
     local idx = m:GetAttribute("Index")
     if not idx then return false end
     for _, v in ipairs(getgenv().TARGET_LIST) do
@@ -83,25 +82,36 @@ task.spawn(function()
     end
 end)
 
--- [[ SISTEM PEMBELIAN (DENGAN PEMBATAS) ]]
+-- [[ SISTEM PEMBELIAN (DENGAN LOCK & RE-VALIDATION) ]]
+local isBuying = false
 ProximityPromptService.PromptShown:Connect(function(prompt)
-    if prompt.ActionText ~= "Purchase" then return end
+    if isBuying or prompt.ActionText ~= "Purchase" then return end
     
     local model = prompt:FindFirstAncestorOfClass("Model")
     if model and isTarget(model) then
         local id = getUnitID(model)
         
-        task.wait(0.3) -- Jeda agar server tidak mengira spam
+        -- Double Check sebelum eksekusi
+        if (getgenv().PURCHASED_LOG[id] or 0) >= getgenv().MAX_BUY_PER_ITEM then 
+            return 
+        end
+
+        isBuying = true -- Kunci agar tidak terjadi spam concurrent
+        task.wait(0.5) -- Memberi jeda sedikit lebih lama agar data sinkron
+        
         pcall(function()
             fireproximityprompt(prompt)
-            -- Tambah hitungan log setelah berhasil menekan tombol beli
+            -- Update log
             getgenv().PURCHASED_LOG[id] = (getgenv().PURCHASED_LOG[id] or 0) + 1
-            print("KAMIAPA: Membeli " .. id .. " (" .. getgenv().PURCHASED_LOG[id] .. "/" .. getgenv().MAX_BUY_PER_ITEM .. ")")
+            warn("KAMIAPA: Berhasil Membeli " .. id .. " | Total: " .. getgenv().PURCHASED_LOG[id] .. "/" .. getgenv().MAX_BUY_PER_ITEM)
         end)
+        
+        task.wait(0.2)
+        isBuying = false
     end
 end)
 
--- [[ AUTO SPEED COIL (ANTI-SPAM) ]]
+-- [[ AUTO SPEED COIL ]]
 task.spawn(function()
     while true do
         local char = player.Character
@@ -135,4 +145,4 @@ task.spawn(function()
     end
 end)
 
-print("KAMIAPA: Skrip Utama Berhasil Dimuat!")
+print("KAMIAPA: Skrip Terpasang dengan Perbaikan Max Buy!")
