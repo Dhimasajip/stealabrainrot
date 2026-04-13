@@ -97,7 +97,7 @@ local function createOverlay()
     getgenv()._CicaOverlayCreated = true
 
     local gui = Instance.new("ScreenGui")
-    gui.Name = "SahusANJINGBlackModeGUI"
+    gui.Name = "SahudANJINGBlackModeGUI"
     gui.DisplayOrder = 999999
     gui.IgnoreGuiInset = true
     gui.ResetOnSpawn = false
