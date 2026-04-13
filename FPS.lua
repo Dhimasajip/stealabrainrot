@@ -97,7 +97,7 @@ local function createOverlay()
     getgenv()._CicaOverlayCreated = true
 
     local gui = Instance.new("ScreenGui")
-    gui.Name = "KAMI•APABlackModeGUI"
+    gui.Name = "SahusANJINGBlackModeGUI"
     gui.DisplayOrder = 999999
     gui.IgnoreGuiInset = true
     gui.ResetOnSpawn = false
