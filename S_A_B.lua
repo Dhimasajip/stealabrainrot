@@ -11,7 +11,7 @@ local ProximityPromptService = game:GetService("ProximityPromptService")
 local player = Players.LocalPlayer
 
 -- [[ PENGATURAN PEMBATAS & POSISI ]]
-getgenv().MAX_BUY_PER_ITEM = 5 -- Maksimal beli per jenis item (bisa Anda ubah)
+getgenv().MAX_BUY_PER_ITEM = 1 -- Maksimal beli per jenis item (bisa Anda ubah)
 getgenv().PURCHASED_LOG = {}    -- Mencatat jumlah yang sudah dibeli
 local HOME_POS = Vector3.new(-410.1356201171875, -6.501974582672119, 208.25595092773438) 
 local RETURN_DISTANCE = 2 
@@ -21,7 +21,7 @@ getgenv().TARGET_LIST = getgenv().TARGET_LIST or {}
 getgenv().FORGOTTEN_UNITS = {}
 getgenv().UNIT_SPAWN_COUNT = {}
 getgenv().SEEN_UNIT_INSTANCES = {}
-getgenv().MAX_SPAWN_BEFORE_FORGET = 3
+getgenv().MAX_SPAWN_BEFORE_FORGET = 1
 
 -- [[ FUNGSI UTILITY ]]
 local function getUnitID(m)
