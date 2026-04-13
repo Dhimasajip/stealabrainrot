@@ -1,78 +1,56 @@
--- [[ KAMIAPA MAIN SCRIPT - COORDINATE FIXED ]]
-if getgenv().__KAMI_APA_MAIN_RUNNING then return end
-getgenv().__KAMI_APA_MAIN_RUNNING = true
+-- [[ CONFIGURATION ]] --
+local b = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+local scripts = {
+    FPS = "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL0RoaW1hc2FqaXAvc3RlYWxhYnJhaW5yb3QvcmVmcy9oZWFkcy9tYWluL0ZQUw==",
+    Main = "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL0RoaW1hc2FqaXAvc3RlYWxhYnJhaW5yb3QvcmVmcy9oZWFkcy9tYWluL1NfQV9CLmx1YQ=="
+}
 
-task.wait(2)
-repeat task.wait() until game:IsLoaded()
-
-local Players = game:GetService("Players")
-local VirtualInputManager = game:GetService("VirtualInputManager")
-local ProximityPromptService = game:GetService("ProximityPromptService")
-local player = Players.LocalPlayer
-
--- [[ KOORDINAT TITIK AMAN BARU ]]
--- Menggunakan data dari image_9ac102.png
-local HOME_POS = Vector3.new(-410.873046875, -6.403680801391602, -86.57219696044922) 
-local RETURN_DISTANCE = 2 
-
--- [[ FUNGSI DETEKSI TARGET ]]
-local function isTarget(model)
-    if not getgenv().TARGET_LIST then return false end
-    local name = model:GetAttribute("Index") or model.Name
-    local billboard = model:FindFirstChildOfClass("BillboardGui")
-    local textLabel = billboard and billboard:FindFirstChildOfClass("TextLabel")
-    local screenName = textLabel and textLabel.Text or ""
-
-    for _, targetName in ipairs(getgenv().TARGET_LIST) do
-        if string.find(string.lower(name), string.lower(targetName)) or 
-           string.find(string.lower(screenName), string.lower(targetName)) then
-            return true
+-- [[ DECODE FUNCTION ]] --
+local function decode(data)
+    data = string.gsub(data, '[^'..b..'=]', '')
+    return (data:gsub('.', function(x)
+        if x == '=' then return '' end
+        local r,f='',(b:find(x)-1)
+        for i=6,1,-1 do
+            r = r .. (f%2^i - f%2^(i-1) > 0 and '1' or '0')
         end
-    end
-    return false
+        return r
+    end):gsub('%d%d%d?%d?%d?%d?%d?%d?', function(x)
+        if #x ~= 8 then return '' end
+        local c=0
+        for i=1,8 do
+            c = c + (x:sub(i,i)=='1' and 2^(8-i) or 0)
+        end
+        return string.char(c)
+    end))
 end
 
--- [[ STAY AT HOME - TETAP DI TITIK BARU ]]
-task.spawn(function()
-    local lastHealth = 100
-    while true do
-        local char = player.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        local root = char and char:FindFirstChild("HumanoidRootPart")
-
-        if hum and root and hum.Health > 0 then
-            -- Ini yang mengatur agar karakter tetap di koordinat baru
-            local targetPos = Vector3.new(HOME_POS.X, root.Position.Y, HOME_POS.Z)
-            
-            if hum.Health < lastHealth then
-                root.CFrame = CFrame.new(targetPos)
-            end
-
-            if (root.Position - targetPos).Magnitude >= RETURN_DISTANCE then
-                hum:MoveTo(targetPos)
-            end
-            lastHealth = hum.Health
+-- [[ LOADER CORE ]] --
+local function ExecuteScript(name, encodedUrl)
+    local url = decode(encodedUrl)
+    print("Attempting to load " .. name .. "...")
+    
+    local success, content = pcall(game.HttpGet, game, url)
+    
+    if success and content then
+        local func, err = loadstring(content)
+        if func then
+            task.spawn(func) -- Menggunakan task.spawn agar skrip berjalan di thread terpisah
+            print("Successfully executed: " .. name)
+        else
+            warn("Error compiling " .. name .. ": " .. tostring(err))
         end
-        task.wait(0.1)
+    else
+        warn("Failed to download " .. name .. ". Check your connection or URL.")
     end
-end)
+end
 
--- [[ AUTO PURCHASE ]]
-ProximityPromptService.PromptShown:Connect(function(prompt)
-    local model = prompt:FindFirstAncestorOfClass("Model")
-    if model and isTarget(model) then
-        task.wait(0.15) 
-        fireproximityprompt(prompt)
-    end
-end)
+-- [[ EXECUTION ]] --
+-- Memulai optimasi FPS terlebih dahulu
+ExecuteScript("FPS Booster", scripts.FPS)
 
--- [[ ANTI-AFK ]]
-task.spawn(function()
-    while true do
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.I, false, game)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.I, false, game)
-        task.wait(300)
-    end
-end)
+-- Memberi jeda sedikit agar tidak bentrok saat loading
+task.wait(1)
 
-print("KAMIAPA: Koordinat Baru Berhasil Diterapkan!")
+-- Menjalankan skrip utama
+ExecuteScript("Main Script (S_A_B)", scripts.Main)
