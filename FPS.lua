@@ -140,7 +140,7 @@ local function createOverlay()
     mainLabel.TextColor3 = Color3.fromRGB(0,255,255)
     mainLabel.Font = Enum.Font.SourceSansBold
     mainLabel.TextSize = 30
-    mainLabel.Text = "👁️ KAMI•APA 👁️"
+    mainLabel.Text = "👁️ KAMI-APA V2 👁️"
     mainLabel.ZIndex = frame.ZIndex + 1
     mainLabel.Parent = gui
 
@@ -163,7 +163,7 @@ local function createOverlay()
     discordLabel.TextColor3 = Color3.fromRGB(180,180,180)
     discordLabel.Font = Enum.Font.SourceSans
     discordLabel.TextSize = 20
-    discordLabel.Text = "discord.gg/kamiapa"
+    discordLabel.Text = "SAHUD CHEATER"
     discordLabel.ZIndex = frame.ZIndex + 1
     discordLabel.Parent = gui
 
