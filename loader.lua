@@ -1,7 +1,7 @@
 -- [[ CONFIGURATION ]] --
 local b = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 local scripts = {
-    FPS = "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL0RoaW1hc2FqaXAvc3RlYWxhYnJhaW5yb3QvcmVmcy9oZWFkcy9tYWluL0ZQUw==",
+    FPS = "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL0RoaW1hc2FqaXAvc3RlYWxhYnJhaW5yb3QvcmVmcy9oZWFkcy9tYWluL0ZQUy5sdWE=",
     Main = "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL0RoaW1hc2FqaXAvc3RlYWxhYnJhaW5yb3QvcmVmcy9oZWFkcy9tYWluL1NfQV9CLmx1YQ=="
 }
 
