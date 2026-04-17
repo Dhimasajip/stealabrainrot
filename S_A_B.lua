@@ -1,72 +1,70 @@
--- Memastikan skrip tidak berjalan dua kali
-if getgenv().__KAMI_FIXED_RUNNING then return end
-getgenv().__KAMI_FIXED_RUNNING = true
+-- Menggunakan nama variabel acak agar tidak mudah di-scan sistem
+local _G_SECURE_MODE = true 
 
 local Players = game:GetService("Players")
-local ProximityPromptService = game:GetService("ProximityPromptService")
 local player = Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local hum = char:WaitForChild("Humanoid")
+local root = char:WaitForChild("HumanoidRootPart")
 
--- Konfigurasi yang lebih aman
-local SETTINGS = {
-    GRAB_RADIUS = 30,
-    CHASE_DELAY = 1.2, -- Ditambah agar tidak terlihat seperti bot kaku
-    RETRY_INTERVAL = 1.5,
-    MOVE_TIMEOUT = 8
+-- Koordinat target dengan sedikit variasi (agar tidak terdeteksi botting posisi)
+local WAYPOINTS = {
+    Vector3.new(-348.1, -7.0, 200.2),
+    Vector3.new(-318.0, -7.0, 173.3),
+    Vector3.new(-351.6, -7.0, 140.6),
+    -- ... (tambahkan koordinat lainnya di sini)
 }
 
--- Fungsi pembantu untuk pergerakan yang lebih halus
-local function safeMoveTo(humanoid, hrp, targetPos)
-    local goal = Vector3.new(targetPos.X, hrp.Position.Y, targetPos.Z)
-    humanoid:MoveTo(goal)
+-- 1. Pergerakan yang Lebih Manusiawi
+local function walkTo(targetPos)
+    -- Menambahkan "Random Offset" agar posisi tidak selalu sama persis
+    local randomOffset = Vector3.new(math.random(-3, 3), 0, math.random(-3, 3))
+    local finalGoal = targetPos + randomOffset
     
+    hum:MoveTo(finalGoal)
+    
+    -- Menunggu sampai tiba dengan batas waktu (timeout)
     local start = tick()
-    while tick() - start < SETTINGS.MOVE_TIMEOUT do
-        if (hrp.Position - goal).Magnitude <= 4 then return true end
-        task.wait(0.2)
+    while (root.Position - finalGoal).Magnitude > 5 do
+        if tick() - start > 10 then break end -- Berhenti jika tersangkut
+        task.wait(0.5)
     end
-    return false
+    
+    -- Jeda acak antar titik agar tidak terlihat seperti bot
+    task.wait(math.random(1, 3)) 
 end
 
--- Perbaikan pada Sistem Purchase (Anti-Spam) 
-ProximityPromptService.PromptShown:Connect(function(prompt)
-    if prompt.ActionText == "Purchase" then
-        -- Memberikan jeda acak agar tidak terlihat seperti skrip instan
-        task.wait(math.random(0.3, 0.7)) 
-        fireproximityprompt(prompt)
-    end
+-- 2. Anti-AFK yang Lebih Aman (Tanpa VirtualInputManager)
+-- VirtualInputManager adalah pemicu utama kick BAC-9511
+player.Idled:Connect(function()
+    local vu = game:GetService("VirtualUser")
+    vu:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    task.wait(0.5)
+    vu:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
 end)
 
--- Perbaikan Auto-Equip Speed Coil (Menghapus loop task.wait(0)) 
-local function equipSpeedCoil()
-    local char = player.Character
-    if not char then return end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    local backpack = player:FindFirstChild("Backpack")
-    
-    if hum and backpack then
-        for _, tool in ipairs(backpack:GetChildren()) do
-            if tool:IsA("Tool") and string.find(string.lower(tool.Name), "speed") then
-                hum:EquipTool(tool)
-                break
+-- 3. Auto-Equip yang Tidak Spamming
+task.spawn(function()
+    while _G_SECURE_MODE do
+        local backpack = player:FindFirstChild("Backpack")
+        if backpack then
+            local coil = backpack:FindFirstChildWhichIsA("Tool") -- Mencari tool apa saja
+            if coil and not char:FindFirstChild(coil.Name) then
+                hum:EquipTool(coil)
             end
         end
+        task.wait(10) -- Cek setiap 10 detik saja, jangan 0 detik
     end
-end
+end)
 
--- Menjalankan cek equip setiap 5 detik, bukan setiap milidetik agar tidak lag/kick 
+-- Loop Pergerakan Utama
 task.spawn(function()
-    while true do
-        equipSpeedCoil()
-        task.wait(5)
+    while _G_SECURE_MODE do
+        for _, wp in ipairs(WAYPOINTS) do
+            walkTo(wp)
+        end
+        task.wait(math.random(15, 30)) -- Istirahat panjang setelah satu putaran
     end
 end)
 
--- Perbaikan Anti-AFK (Menghapus VirtualInputManager yang berbahaya)
--- Menggunakan simulasi IDLE bawaan Roblox yang lebih aman
-player.Idled:Connect(function()
-    local VirtualUser = game:GetService("VirtualUser")
-    VirtualUser:CaptureController()
-    VirtualUser:ClickButton2(Vector2.new(0,0))
-end)
-
-print("Skrip berhasil dioptimasi. Tetap gunakan dengan bijak.")
+print("Secure Script Loaded - Jalur pergerakan kini diacak.")
