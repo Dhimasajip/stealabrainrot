@@ -1,24 +1,23 @@
 --[[ 
-    ULTRA-LOCK VERSION
-    - Gerakan: DIKUNCI (Hanya diam di koordinat baru)
-    - Pembelian: Hanya jika item nempel/sangat dekat [cite: 1]
-    - Filter: Hanya membeli ID yang ada di TARGET_LIST 
+    FINAL SECURE VERSION 
+    - Fokus Koordinat: -412.61, -6.40, 218.96
+    - Sistem: Hanya Diam & Menunggu (Lock Position)
+    - Keamanan: No VirtualInput, No Speed Coil Loop 
 ]]
 
-if getgenv().__LOCK_FINAL_STRICT then return end
-getgenv().__LOCK_FINAL_STRICT = true
+if getgenv().__ULTRA_SECURE_RUNNING then return end
+getgenv().__ULTRA_SECURE_RUNNING = true
 
 local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local player = Players.LocalPlayer
 
--- 1. KOORDINAT TETAP (DARI GAMBAR)
-local STAY_POINT = Vector3.new(-410.7376708984375, -6.403680801391602, 231.48736572265625)
+-- 1. KOORDINAT BARU (DARI GAMBAR ANDA)
+local LOCK_POINT = Vector3.new(-412.615478515625, -6.403680801391602, 218.9698028564453)
 
 -- 2. KONFIGURASI TARGET
 getgenv().TARGET_LIST = getgenv().TARGET_LIST or {} [cite: 1]
-getgenv().FORGOTTEN_UNITS = {} [cite: 1]
-getgenv().BUY_RANGE = 10 -- Jarak sangat dekat agar tidak lari-lari
+getgenv().BUY_RANGE = 15 -- Jarak interaksi aman
 
 local function isTarget(m)
     local idx = m:GetAttribute("Index") [cite: 1]
@@ -29,14 +28,14 @@ local function isTarget(m)
     return false
 end
 
--- 3. LOGIKA PEMBELIAN AMAN (ANTI-KICK BAC-9511)
+-- 3. LOGIKA PEMBELIAN AMAN (DENGAN JEDA MANUSIAWI)
 ProximityPromptService.PromptShown:Connect(function(prompt)
     if prompt.ActionText ~= "Purchase" then return end [cite: 3]
     
     local model = prompt:FindFirstAncestorOfClass("Model")
-    if model and isTarget(model) then [cite: 1, 3]
-        -- Jeda manusiawi agar tidak terdeteksi bot
-        task.wait(math.random(20, 35) / 10) 
+    if model and isTarget(model) then
+        -- Jeda acak agar tidak terdeteksi bot (1.5 - 3 detik)
+        task.wait(math.random(15, 30) / 10) 
         
         pcall(function()
             fireproximityprompt(prompt) [cite: 3]
@@ -44,7 +43,7 @@ ProximityPromptService.PromptShown:Connect(function(prompt)
     end
 end)
 
--- 4. LOOP UTAMA: HANYA DIAM & MENUNGGU
+-- 4. LOOP UTAMA: MENJAGA POSISI
 task.spawn(function()
     while true do
         local char = player.Character
@@ -52,25 +51,23 @@ task.spawn(function()
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         
         if hum and hrp then
-            -- Paksa karakter tetap di titik koordinat
-            if (hrp.Position - STAY_POINT).Magnitude > 3 then
-                hum:MoveTo(STAY_POINT) [cite: 4]
+            -- Memastikan karakter berada di titik koordinat baru
+            if (hrp.Position - LOCK_POINT).Magnitude > 2 then
+                hum:MoveTo(LOCK_POINT)
             end
         end
-        
-        -- Tidak ada perintah MoveTo ke item lain agar tidak bergerak ke mana-mana
         task.wait(2)
     end
 end)
 
--- 5. ANTI-AFK TANPA KEYBOARD (BYPASS ERROR 267)
+-- 5. ANTI-AFK AMAN (TANPA KEYBOARD INPUT)
 task.spawn(function()
     while true do
         local vu = game:GetService("VirtualUser")
         vu:CaptureController()
         vu:ClickButton2(Vector2.new(0,0))
-        task.wait(200)
+        task.wait(240)
     end
 end)
 
-print("Karakter dikunci di koordinat. Hanya akan membeli jika target di TARGET_LIST muncul di dekat Anda.")
+print("Script Locked: Karakter akan diam di koordinat baru dan membeli target saat muncul.")
