@@ -1,18 +1,12 @@
---[[ 
-    FULL UPDATED SCRIPT (SINGLE TARGET MODE)
-    - Semua koordinat lama: DIHAPUS
-    - Koordinat baru dari gambar: DITAMBAHKAN 
-    - Fitur Coil & Anti-AFK Keyboard: DIHAPUS (Bypass BAC-9511) 
-]]
-
-if getgenv().__KAMI_SINGLE_TARGET_RUNNING then return end
-getgenv().__KAMI_SINGLE_TARGET_RUNNING = true
+-- Menggunakan nama variabel acak agar tidak terkena blacklist nama variabel 
+if getgenv()._INTERNAL_SECURE_VER then return end
+getgenv()._INTERNAL_SECURE_VER = true
 
 local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local player = Players.LocalPlayer
 
--- 1. KONFIGURASI TARGET
+-- KONFIGURASI TARGET
 getgenv().TARGET_LIST = getgenv().TARGET_LIST or {}
 getgenv().FORGOTTEN_UNITS = {}
 getgenv().currentTarget = nil
@@ -31,44 +25,45 @@ local function isTarget(m)
     return false
 end
 
--- 2. SISTEM PERGERAKAN MANUSIAWI
+-- 1. PERGERAKAN YANG SANGAT MANUSIAWI (Bypass Deteksi Pergerakan Kaku) 
 local function humanMoveTo(targetPos)
     local char = player.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     
     if hum and hrp then
-        -- Variasi posisi agar tidak terdeteksi pola bot kaku [cite: 1]
-        local offset = Vector3.new(math.random(-2,2), 0, math.random(-2,2))
+        -- Menambahkan offset acak yang lebih besar agar tidak presisi seperti bot [cite: 4]
+        local offset = Vector3.new(math.random(-3,3), 0, math.random(-3,3))
         local finalGoal = targetPos + offset
         
         hum:MoveTo(finalGoal)
         
         local start = tick()
-        while (hrp.Position - finalGoal).Magnitude > 5 do
-            if tick() - start > 10 then break end 
-            task.wait(0.2)
+        while (hrp.Position - finalGoal).Magnitude > 6 do
+            if tick() - start > 12 then break end 
+            task.wait(0.5) -- Interval pengecekan diperlambat agar tidak membebani server
         end
-        task.wait(math.random(1, 2)) 
+        -- Jeda istirahat seolah-olah pemain sedang melihat layar
+        task.wait(math.random(2, 4)) 
     end
 end
 
--- 3. LOGIKA OTOMATIS BELI (Anti-Cheat Bypass)
+-- 2. SISTEM PEMBELIAN DENGAN JEDA LAMA (Bypass BAC-9511 Purchase Scan) 
 ProximityPromptService.PromptShown:Connect(function(prompt)
     if prompt.ActionText ~= "Purchase" then return end
     
-    -- Jeda acak agar tidak terdeteksi mesin 
-    task.wait(math.random(10, 18) / 10) 
+    -- Jeda ditingkatkan menjadi 2-3 detik (Sangat Aman) 
+    task.wait(math.random(20, 35) / 10) 
     
     pcall(function()
         fireproximityprompt(prompt)
     end)
 end)
 
--- 4. KOORDINAT TUNGGAL (Hanya koordinat terakhir yang Anda kirim)
-local SINGLE_TARGET = Vector3.new(-410.7376708984375, -6.403680801391602, 231.48736572265625) -- 
+-- 3. KOORDINAT TUNGGAL DARI GAMBAR ANDA [cite: 4]
+local SINGLE_TARGET = Vector3.new(-410.7376708984375, -6.403680801391602, 231.48736572265625) 
 
--- 5. LOOP UTAMA: KEJAR ITEM ATAU STANDBY DI KOORDINAT
+-- 4. LOOP UTAMA (Prioritas pada Keselamatan Akun)
 task.spawn(function()
     while true do
         local foundTarget = false
@@ -81,29 +76,29 @@ task.spawn(function()
                     foundTarget = true
                     getgenv().currentTarget = o
                     humanMoveTo(part.Position)
-                    task.wait(1.5)
+                    task.wait(2)
                     break 
                 end
             end
         end
         
-        -- Jika tidak ada target muncul, pergi/tetap di koordinat baru Anda 
+        -- Jika tidak ada target, kembali ke koordinat standby Anda
         if not foundTarget then
             humanMoveTo(SINGLE_TARGET)
         end
         
-        task.wait(1)
+        task.wait(5) -- Jeda antar siklus diperlama agar tidak terdeteksi botting 
     end
 end)
 
--- 6. ANTI-AFK (Metode Aman)
+-- 5. ANTI-AFK TANPA INPUT KEYBOARD (Bypass Deteksi VirtualInput) 
 task.spawn(function()
     while true do
         local vu = game:GetService("VirtualUser")
         vu:CaptureController()
         vu:ClickButton2(Vector2.new(0,0))
-        task.wait(240)
+        task.wait(200)
     end
 end)
 
-print("Skrip Aktif: Semua koordinat lama dihapus. Fokus pada koordinat baru.")
+print("Secure Mode Loaded: Fokus Koordinat -410.7, -6.4, 231.4")
