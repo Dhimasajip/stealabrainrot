@@ -1,19 +1,18 @@
--- Menggunakan identitas unik yang berbeda total
+-- Menggunakan identitas unik yang berbeda total untuk menghindari blacklist nama variabel
 if getgenv()._STRICT_SECURE_LOADED then return end
 getgenv()._STRICT_SECURE_LOADED = true
 
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
-local RunService = game:GetService("RunService")
 
--- KONFIGURASI AMAN
+-- KONFIGURASI ULTRA AMAN
 local SETTINGS = {
-    WALK_VARIATION = 3.5,
-    WAIT_BETWEEN_WP = math.random(2, 4),
-    MAX_MOVE_TIME = 8
+    WALK_VARIATION = 4.5, -- Membuat karakter tidak jalan ke titik yang sama persis
+    WAIT_BETWEEN_WP = math.random(3, 6), -- Jeda antar titik yang lebih lama
+    MAX_MOVE_TIME = 12
 }
 
--- 1. PERGERAKAN YANG DIACAK (Humanoid:MoveTo sering memicu flag jika terlalu presisi)
+-- 1. PERGERAKAN YANG DIACAK (Humanoid:MoveTo memicu flag jika terlalu presisi)
 local function humanizedMove(targetPos)
     local char = player.Character
     if not char then return end
@@ -28,17 +27,18 @@ local function humanizedMove(targetPos)
         hum:MoveTo(randomGoal)
         
         local start = tick()
-        while (hrp.Position - randomGoal).Magnitude > 5 do
+        while (hrp.Position - randomGoal).Magnitude > 6 do
             if tick() - start > SETTINGS.MAX_MOVE_TIME then break end
             task.wait(0.5)
         end
+        -- Berhenti sejenak seolah-olah pemain sedang berpikir
+        task.wait(math.random(1, 2))
     end
 end
 
--- 2. PENGGANTIAN FIREPROXIMITYPROMPT (Metode ini pemicu Error 267) 
--- Daripada menggunakan fireproximityprompt(), kita gunakan deteksi jarak.
--- Anda harus menekan tombol 'E' secara manual atau menggunakan macro keyboard luar (AutoHotKey).
--- Skrip ini hanya akan membawa Anda ke target.
+-- 2. PENGGANTIAN FIREPROXIMITYPROMPT (Metode ini pemicu Error 267 paling sering) 
+-- Skrip ini sekarang hanya membawa Anda ke target. 
+-- Disarankan untuk interaksi (E) dilakukan secara manual atau dengan autoclicker luar.
 local function findTargetAndGo()
     for _, item in ipairs(workspace:GetDescendants()) do
         if item:IsA("ProximityPrompt") and item.ActionText == "Purchase" then
@@ -54,10 +54,11 @@ local function findTargetAndGo()
     end
 end
 
--- 3. ANTI-DETECTION (Menghapus jejak skrip dari sistem scan)
+-- 3. PEMBERSIHAN JEJAK (Menghapus variabel yang mungkin di-scan) 
 local function cleanup()
     getgenv().currentTarget = nil
     getgenv().TARGET_QUEUE = {}
+    getgenv().__KAMI_APA_MAIN_RUNNING = nil -- Menghapus sisa variabel lama
 end
 
 -- 4. LOOP UTAMA (Sangat lambat agar terlihat seperti pemain asli)
@@ -65,11 +66,12 @@ task.spawn(function()
     cleanup()
     while true do
         findTargetAndGo()
-        task.wait(math.random(10, 20)) -- Istirahat lama agar tidak terdeteksi botting 
+        -- Istirahat sangat lama setelah satu putaran agar tidak terdeteksi botting 
+        task.wait(math.random(20, 40)) 
     end
 end)
 
--- 5. AUTO EQUIP (Tanpa loop task.wait(0))
+-- 5. AUTO EQUIP (Tanpa loop task.wait(0) yang memicu spam deteksi) 
 task.spawn(function()
     while true do
         local char = player.Character
@@ -80,8 +82,8 @@ task.spawn(function()
                 char:FindFirstChildOfClass("Humanoid"):EquipTool(coil)
             end
         end
-        task.wait(15) 
+        task.wait(15) -- Cek setiap 15 detik saja
     end
 end)
 
-print("Versi Ultra-Safe Loaded. Interaksi otomatis dimatikan untuk menghindari ban.")
+print("Versi Ultra-Safe Loaded. Pola pergerakan kini diacak total.")
