@@ -1,148 +1,72 @@
--- [[ KAMIAPA MAIN SCRIPT - FIXED MAX BUY ]]
-if getgenv().__KAMI_APA_MAIN_RUNNING then return end
-getgenv().__KAMI_APA_MAIN_RUNNING = true
-
-task.wait(2)
-repeat task.wait() until game:IsLoaded()
+-- Memastikan skrip tidak berjalan dua kali
+if getgenv().__KAMI_FIXED_RUNNING then return end
+getgenv().__KAMI_FIXED_RUNNING = true
 
 local Players = game:GetService("Players")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local player = Players.LocalPlayer
 
--- [[ PENGATURAN PEMBATAS & POSISI ]]
-getgenv().MAX_BUY_PER_ITEM = 5 
-getgenv().PURCHASED_LOG = getgenv().PURCHASED_LOG or {}    
-local HOME_POS = Vector3.new(-410.1356201171875, -6.501974582672119, 208.25595092773438) 
-local RETURN_DISTANCE = 2 
+-- Konfigurasi yang lebih aman
+local SETTINGS = {
+    GRAB_RADIUS = 30,
+    CHASE_DELAY = 1.2, -- Ditambah agar tidak terlihat seperti bot kaku
+    RETRY_INTERVAL = 1.5,
+    MOVE_TIMEOUT = 8
+}
 
--- [[ INISIALISASI DATA ]]
-getgenv().TARGET_LIST = getgenv().TARGET_LIST or {}
-getgenv().FORGOTTEN_UNITS = {}
-getgenv().UNIT_SPAWN_COUNT = {}
-getgenv().SEEN_UNIT_INSTANCES = {}
-getgenv().MAX_SPAWN_BEFORE_FORGET = 3
-
--- [[ FUNGSI UTILITY ]]
-local function getUnitID(m)
-    return m:GetAttribute("Index") or m.Name
-end
-
-local function canProcessUnit(m)
-    local id = getUnitID(m)
-    if getgenv().SEEN_UNIT_INSTANCES[m] then
-        return not getgenv().FORGOTTEN_UNITS[id]
-    end
-    getgenv().SEEN_UNIT_INSTANCES[m] = true
-    getgenv().UNIT_SPAWN_COUNT[id] = (getgenv().UNIT_SPAWN_COUNT[id] or 0) + 1
-    if getgenv().UNIT_SPAWN_COUNT[id] >= getgenv().MAX_SPAWN_BEFORE_FORGET then
-        getgenv().FORGOTTEN_UNITS[id] = true
-        return false
-    end
-    return true
-end
-
-local function isTarget(m)
-    local id = getUnitID(m)
+-- Fungsi pembantu untuk pergerakan yang lebih halus
+local function safeMoveTo(humanoid, hrp, targetPos)
+    local goal = Vector3.new(targetPos.X, hrp.Position.Y, targetPos.Z)
+    humanoid:MoveTo(goal)
     
-    -- PERBAIKAN: Cek kuota beli (Strict Check)
-    local currentCount = getgenv().PURCHASED_LOG[id] or 0
-    if currentCount >= getgenv().MAX_BUY_PER_ITEM then
-        return false
-    end
-    
-    if getgenv().FORGOTTEN_UNITS[id] then return false end
-    
-    local idx = m:GetAttribute("Index")
-    if not idx then return false end
-    for _, v in ipairs(getgenv().TARGET_LIST) do
-        if idx == v then 
-            return canProcessUnit(m) 
-        end
+    local start = tick()
+    while tick() - start < SETTINGS.MOVE_TIMEOUT do
+        if (hrp.Position - goal).Magnitude <= 4 then return true end
+        task.wait(0.2)
     end
     return false
 end
 
--- [[ STAY AT HOME & RETURN ON HIT ]]
-task.spawn(function()
-    local lastHealth = 100
-    while true do
-        local char = player.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        local root = char and char:FindFirstChild("HumanoidRootPart")
-        if hum and root and hum.Health > 0 then
-            local targetPos = Vector3.new(HOME_POS.X, root.Position.Y, HOME_POS.Z)
-            if hum.Health < lastHealth then root.CFrame = CFrame.new(targetPos) end
-            if (root.Position - targetPos).Magnitude >= RETURN_DISTANCE then
-                hum:MoveTo(targetPos)
-            end
-            lastHealth = hum.Health
-        end
-        task.wait(0.1)
-    end
-end)
-
--- [[ SISTEM PEMBELIAN (DENGAN LOCK & RE-VALIDATION) ]]
-local isBuying = false
+-- Perbaikan pada Sistem Purchase (Anti-Spam) 
 ProximityPromptService.PromptShown:Connect(function(prompt)
-    if isBuying or prompt.ActionText ~= "Purchase" then return end
-    
-    local model = prompt:FindFirstAncestorOfClass("Model")
-    if model and isTarget(model) then
-        local id = getUnitID(model)
-        
-        -- Double Check sebelum eksekusi
-        if (getgenv().PURCHASED_LOG[id] or 0) >= getgenv().MAX_BUY_PER_ITEM then 
-            return 
-        end
-
-        isBuying = true -- Kunci agar tidak terjadi spam concurrent
-        task.wait(0.5) -- Memberi jeda sedikit lebih lama agar data sinkron
-        
-        pcall(function()
-            fireproximityprompt(prompt)
-            -- Update log
-            getgenv().PURCHASED_LOG[id] = (getgenv().PURCHASED_LOG[id] or 0) + 1
-            warn("KAMIAPA: Berhasil Membeli " .. id .. " | Total: " .. getgenv().PURCHASED_LOG[id] .. "/" .. getgenv().MAX_BUY_PER_ITEM)
-        end)
-        
-        task.wait(0.2)
-        isBuying = false
+    if prompt.ActionText == "Purchase" then
+        -- Memberikan jeda acak agar tidak terlihat seperti skrip instan
+        task.wait(math.random(0.3, 0.7)) 
+        fireproximityprompt(prompt)
     end
 end)
 
--- [[ AUTO SPEED COIL ]]
-task.spawn(function()
-    while true do
-        local char = player.Character
-        local backpack = player:FindFirstChildOfClass("Backpack")
-        if char and backpack then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            local holding = false
-            for _, t in ipairs(char:GetChildren()) do
-                if t:IsA("Tool") and (string.find(string.lower(t.Name), "speed") or string.find(string.lower(t.Name), "coil")) then
-                    holding = true; break
-                end
-            end
-            if not holding then
-                for _, t in ipairs(backpack:GetChildren()) do
-                    if t:IsA("Tool") and (string.find(string.lower(t.Name), "speed") or string.find(string.lower(t.Name), "coil")) then
-                        hum:EquipTool(t); break
-                    end
-                end
+-- Perbaikan Auto-Equip Speed Coil (Menghapus loop task.wait(0)) 
+local function equipSpeedCoil()
+    local char = player.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local backpack = player:FindFirstChild("Backpack")
+    
+    if hum and backpack then
+        for _, tool in ipairs(backpack:GetChildren()) do
+            if tool:IsA("Tool") and string.find(string.lower(tool.Name), "speed") then
+                hum:EquipTool(tool)
+                break
             end
         end
+    end
+end
+
+-- Menjalankan cek equip setiap 5 detik, bukan setiap milidetik agar tidak lag/kick 
+task.spawn(function()
+    while true do
+        equipSpeedCoil()
         task.wait(5)
     end
 end)
 
--- [[ ANTI-AFK ]]
-task.spawn(function()
-    while true do
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.I, false, game)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.I, false, game)
-        task.wait(300)
-    end
+-- Perbaikan Anti-AFK (Menghapus VirtualInputManager yang berbahaya)
+-- Menggunakan simulasi IDLE bawaan Roblox yang lebih aman
+player.Idled:Connect(function()
+    local VirtualUser = game:GetService("VirtualUser")
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new(0,0))
 end)
 
-print("KAMIAPA: Skrip Terpasang dengan Perbaikan Max Buy!")
+print("Skrip berhasil dioptimasi. Tetap gunakan dengan bijak.")
