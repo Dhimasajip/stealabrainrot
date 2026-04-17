@@ -1,49 +1,73 @@
 --[[ 
-    FINAL SECURE VERSION 
-    - Fokus Koordinat: -412.61, -6.40, 218.96
-    - Sistem: Hanya Diam & Menunggu (Lock Position)
-    - Keamanan: No VirtualInput, No Speed Coil Loop 
+    FINAL REVISED: FORCE MOVE VERSION
+    - Koordinat: -412.61, -6.40, 218.96
+    - Masalah: Karakter tidak bergerak (FIXED)
+    - Keamanan: No VirtualInput, No Coil (Anti-Ban)
 ]]
 
-if getgenv().__ULTRA_SECURE_RUNNING then return end
-getgenv().__ULTRA_SECURE_RUNNING = true
+if getgenv().__SECURE_FORCE_RUN then return end
+getgenv().__SECURE_FORCE_RUN = true
 
 local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local player = Players.LocalPlayer
 
--- 1. KOORDINAT BARU (DARI GAMBAR ANDA)
+-- 1. KOORDINAT TARGET
 local LOCK_POINT = Vector3.new(-412.615478515625, -6.403680801391602, 218.9698028564453)
 
--- 2. KONFIGURASI TARGET
-getgenv().TARGET_LIST = getgenv().TARGET_LIST or {} [cite: 1]
-getgenv().BUY_RANGE = 15 -- Jarak interaksi aman
+-- 2. KONFIGURASI TARGET LIST
+getgenv().TARGET_LIST = getgenv().TARGET_LIST or {}
+getgenv().BUY_RANGE = 15
 
 local function isTarget(m)
-    local idx = m:GetAttribute("Index") [cite: 1]
+    local idx = m:GetAttribute("Index")
     if not idx then return false end
     for _, v in ipairs(getgenv().TARGET_LIST) do
-        if idx == v then return true end [cite: 2]
+        if idx == v then return true end
     end
     return false
 end
 
--- 3. LOGIKA PEMBELIAN AMAN (DENGAN JEDA MANUSIAWI)
+-- 3. FUNGSI GERAK PAKSA (Agar Karakter Pasti Jalan)
+local function forceMoveToPoint(pos)
+    local char = player.Character or player.CharacterAdded:Wait()
+    local hum = char:WaitForChild("Humanoid")
+    local hrp = char:WaitForChild("HumanoidRootPart")
+    
+    print("Memulai pergerakan ke koordinat baru...")
+    
+    -- Menggunakan loop kecil agar perintah MoveTo tidak terabaikan oleh game
+    local attempt = 0
+    repeat
+        hum:MoveTo(pos)
+        task.wait(0.5)
+        attempt = attempt + 1
+    until (hrp.Position - pos).Magnitude < 3 or attempt > 20
+    
+    print("Karakter telah sampai di lokasi atau timeout.")
+end
+
+-- 4. LOGIKA PEMBELIAN (Anti-Kick BAC-9511)
 ProximityPromptService.PromptShown:Connect(function(prompt)
-    if prompt.ActionText ~= "Purchase" then return end [cite: 3]
+    if prompt.ActionText ~= "Purchase" then return end
     
     local model = prompt:FindFirstAncestorOfClass("Model")
     if model and isTarget(model) then
-        -- Jeda acak agar tidak terdeteksi bot (1.5 - 3 detik)
-        task.wait(math.random(15, 30) / 10) 
+        -- Jeda manusiawi agar tidak terdeteksi (2 detik)
+        task.wait(2) 
         
         pcall(function()
-            fireproximityprompt(prompt) [cite: 3]
+            fireproximityprompt(prompt)
         end)
     end
 end)
 
--- 4. LOOP UTAMA: MENJAGA POSISI
+-- 5. JALANKAN GERAKAN PERTAMA KALI
+task.spawn(function()
+    forceMoveToPoint(LOCK_POINT)
+end)
+
+-- 6. LOOP PENJAGA (Menjaga agar tetap di titik tersebut)
 task.spawn(function()
     while true do
         local char = player.Character
@@ -51,16 +75,16 @@ task.spawn(function()
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         
         if hum and hrp then
-            -- Memastikan karakter berada di titik koordinat baru
-            if (hrp.Position - LOCK_POINT).Magnitude > 2 then
+            -- Jika terdorong atau bergeser jauh, balikkan ke titik target
+            if (hrp.Position - LOCK_POINT).Magnitude > 5 then
                 hum:MoveTo(LOCK_POINT)
             end
         end
-        task.wait(2)
+        task.wait(3)
     end
 end)
 
--- 5. ANTI-AFK AMAN (TANPA KEYBOARD INPUT)
+-- 7. ANTI-AFK AMAN
 task.spawn(function()
     while true do
         local vu = game:GetService("VirtualUser")
@@ -70,4 +94,4 @@ task.spawn(function()
     end
 end)
 
-print("Script Locked: Karakter akan diam di koordinat baru dan membeli target saat muncul.")
+print("Skrip Aktif: Karakter dipaksa bergerak ke koordinat baru.")
