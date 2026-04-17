@@ -1,103 +1,108 @@
 --[[ 
-    FINAL REVISED SCRIPT
-    - Fokus Koordinat Baru: -410.73, -6.40, 231.48
-    - Sistem Beli: Diperbaiki agar mengejar target di sekitar titik tersebut
-    - Keamanan: No Coil, No VirtualInput, Jeda Manusiawi
+    ULTRA SECURE VERSION
+    - Koordinat Tunggal: -410.73, -6.40, 231.48
+    - Perbaikan Target: Memastikan hanya membeli item di TARGET_LIST
+    - Keamanan: Menghapus VirtualInputManager & Fitur Coil
 ]]
 
-if getgenv()._FINAL_STRICT_RUN then return end
-getgenv()._FINAL_STRICT_RUN = true
+if getgenv().__SECURE_FINAL_FIX then return end
+getgenv().__SECURE_FINAL_FIX = true
 
 local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local player = Players.LocalPlayer
 
--- KONFIGURASI TARGET
-local MY_POINT = Vector3.new(-410.7376708984375, -6.403680801391602, 231.48736572265625) --
-getgenv().TARGET_LIST = getgenv().TARGET_LIST or {} --
-getgenv().GRAB_RADIUS = 30 --
+-- 1. KONFIGURASI TARGET (HANYA KOORDINAT DARI GAMBAR)
+local MY_POINT = Vector3.new(-410.7376708984375, -6.403680801391602, 231.48736572265625)
+getgenv().TARGET_LIST = getgenv().TARGET_LIST or {}
+getgenv().GRAB_RADIUS = 25 -- Jarak diperdekat agar tidak membeli barang yang jauh
 
 local function getUnitID(m)
-    return m:GetAttribute("Index") or m.Name --
+    return m:GetAttribute("Index") or m.Name
 end
 
+-- Memastikan hanya item yang terdaftar di TARGET_LIST yang diproses
 local function isTarget(m)
-    local idx = m:GetAttribute("Index") --
+    local idx = m:GetAttribute("Index")
     if not idx then return false end
     for _, v in ipairs(getgenv().TARGET_LIST) do
-        if idx == v then return true end --
+        if idx == v then return true end
     end
     return false
 end
 
--- 1. FUNGSI JALAN (Dengan Toleransi Jarak)
-local function goTo(targetPos)
+-- 2. FUNGSI PERGERAKAN (DIBUAT SANGAT LAMBAT AGAR AMAN)
+local function secureMove(targetPos)
     local char = player.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     
     if hum and hrp then
-        -- Gunakan sedikit variasi agar tidak terdeteksi kaku
-        local goal = targetPos + Vector3.new(math.random(-1,1), 0, math.random(-1,1))
-        hum:MoveTo(goal) --
+        -- Menambah variasi acak agar tidak terdeteksi pola bot
+        local goal = targetPos + Vector3.new(math.random(-2,2), 0, math.random(-2,2))
+        hum:MoveTo(goal)
         
         local s = tick()
-        while (hrp.Position - goal).Magnitude > 4 do
-            if tick() - s > 8 then break end 
-            task.wait(0.2)
+        while (hrp.Position - goal).Magnitude > 5 do
+            if tick() - s > 10 then break end 
+            task.wait(0.5)
         end
     end
 end
 
--- 2. SISTEM PEMBELIAN OTOMATIS (Diperbaiki)
--- Fungsi ini akan memicu 'E' saat prompt muncul
+-- 3. LOGIKA PEMBELIAN (DIBERIKAN JEDA LAMA AGAR TIDAK TERDETEKSI)
 ProximityPromptService.PromptShown:Connect(function(prompt)
-    if prompt.ActionText ~= "Purchase" then return end --
+    if prompt.ActionText ~= "Purchase" then return end
     
-    -- Jeda agar tidak terkena kick BAC-9511
-    task.wait(math.random(10, 18) / 10) 
+    -- Memberikan jeda manusiawi (1.5 - 3 detik) agar tidak terkena BAC-9511
+    task.wait(math.random(15, 30) / 10) 
     
-    pcall(function()
-        fireproximityprompt(prompt) --
-    end)
+    local model = prompt:FindFirstAncestorOfClass("Model")
+    if model and isTarget(model) then
+        pcall(function()
+            fireproximityprompt(prompt)
+        end)
+    end
 end)
 
--- 3. LOOP UTAMA: SCAN -> MOVE -> BUY
+-- 4. LOOP UTAMA: STANDBY DI TITIK KOORDINAT
 task.spawn(function()
     while true do
         local foundItem = false
         
-        -- Scan apakah ada item target di sekitar koordinat Anda
+        -- Hanya scan item di sekitar karakter agar tidak lari terlalu jauh
         for _, o in ipairs(workspace:GetDescendants()) do
             if o:IsA("Model") and isTarget(o) then
-                local part = o.PrimaryPart or o:FindFirstChildWhichIsA("BasePart") --
+                local part = o.PrimaryPart or o:FindFirstChildWhichIsA("BasePart")
                 if part and o.Parent then
-                    -- Jika ada target, tinggalkan titik koordinat sebentar untuk membeli
-                    goTo(part.Position)
-                    foundItem = true
-                    task.wait(1)
-                    break 
+                    local dist = (player.Character.HumanoidRootPart.Position - part.Position).Magnitude
+                    if dist <= getgenv().GRAB_RADIUS then
+                        secureMove(part.Position)
+                        foundItem = true
+                        task.wait(2)
+                        break
+                    end
                 end
             end
         end
         
-        -- Jika tidak ada item yang muncul, kembali/tetap di koordinat Anda
+        -- Kembali ke koordinat utama jika tidak ada item target
         if not foundItem then
-            goTo(MY_POINT)
+            secureMove(MY_POINT)
         end
         
-        task.wait(1.5)
+        task.wait(3) -- Jeda antar siklus diperlama agar tidak spamming
     end
 end)
 
--- 4. ANTI-AFK AMAN (Tanpa Keyboard SendKeyEvent)
+-- 5. ANTI-AFK (METODE AMAN TANPA SIMULASI KEYBOARD)
 task.spawn(function()
     while true do
         local vu = game:GetService("VirtualUser")
         vu:CaptureController()
         vu:ClickButton2(Vector2.new(0,0))
-        task.wait(200)
+        task.wait(240)
     end
 end)
 
-print("Script Fixed: Menetap di koordinat baru dan akan mengejar item target jika muncul.")
+print("Script Fixed: Standby di koordinat baru, hanya beli item yang sesuai target.")
