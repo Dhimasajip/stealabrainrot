@@ -1,96 +1,109 @@
 --[[ 
-    FINAL UPDATE: HUMANIZED PATHFINDING
-    - Fitur Pathfinding: Dihidupkan kembali (Versi Aman)
-    - Pergerakan: Tidak lagi garis lurus (Randomized Curvature)
-    - Fitur Coil: Tetap DIHAPUS
-    - VirtualInputManager: Tetap DIHAPUS
+    FULL UPDATED SCRIPT (SINGLE TARGET MODE)
+    - Semua koordinat lama: DIHAPUS
+    - Koordinat baru dari gambar: DITAMBAHKAN 
+    - Fitur Coil & Anti-AFK Keyboard: DIHAPUS (Bypass BAC-9511) 
 ]]
 
-if getgenv().__SECURE_V3_RUNNING then return end
-getgenv().__SECURE_V3_RUNNING = true
+if getgenv().__KAMI_SINGLE_TARGET_RUNNING then return end
+getgenv().__KAMI_SINGLE_TARGET_RUNNING = true
 
 local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local player = Players.LocalPlayer
 
--- Konfigurasi Target
+-- 1. KONFIGURASI TARGET
 getgenv().TARGET_LIST = getgenv().TARGET_LIST or {}
-getgenv().TARGET_QUEUE = {}
+getgenv().FORGOTTEN_UNITS = {}
 getgenv().currentTarget = nil
+getgenv().GRAB_RADIUS = 30 
 
--- Fungsi Jalan yang Lebih Manusiawi (Menggantikan MoveTo standar yang kaku)
-local function safeMove(targetPos)
+local function getUnitID(m)
+    return m:GetAttribute("Index") or m.Name
+end
+
+local function isTarget(m)
+    local idx = m:GetAttribute("Index")
+    if not idx then return false end
+    for _,v in ipairs(getgenv().TARGET_LIST) do
+        if idx == v then return true end
+    end
+    return false
+end
+
+-- 2. SISTEM PERGERAKAN MANUSIAWI
+local function humanMoveTo(targetPos)
     local char = player.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
-    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
     
-    if hum and root then
-        -- Menambah 'noise' agar tujuan tidak selalu ke titik pusat yang sama
-        local randomOffset = Vector3.new(math.random(-3, 3), 0, math.random(-3, 3))
-        local finalGoal = targetPos + randomOffset
+    if hum and hrp then
+        -- Variasi posisi agar tidak terdeteksi pola bot kaku [cite: 1]
+        local offset = Vector3.new(math.random(-2,2), 0, math.random(-2,2))
+        local finalGoal = targetPos + offset
         
-        -- Berjalan ke target
         hum:MoveTo(finalGoal)
         
-        -- Deteksi jika macet atau sudah sampai
         local start = tick()
-        while (root.Position - finalGoal).Magnitude > 4 do
-            if tick() - start > 10 then break end -- Timeout 10 detik
-            task.wait(0.1)
+        while (hrp.Position - finalGoal).Magnitude > 5 do
+            if tick() - start > 10 then break end 
+            task.wait(0.2)
         end
-        
-        -- Jeda acak antar gerakan agar tidak terlihat seperti loop mesin
-        task.wait(math.random(5, 15) / 10)
+        task.wait(math.random(1, 2)) 
     end
 end
 
--- Sistem Interaksi Purchase (Bypass Anti-Cheat)
+-- 3. LOGIKA OTOMATIS BELI (Anti-Cheat Bypass)
 ProximityPromptService.PromptShown:Connect(function(prompt)
     if prompt.ActionText ~= "Purchase" then return end
     
-    -- Jeda sebelum beli (PENTING: Jangan instan!)
-    task.wait(math.random(8, 16) / 10) 
-
+    -- Jeda acak agar tidak terdeteksi mesin 
+    task.wait(math.random(10, 18) / 10) 
+    
     pcall(function()
         fireproximityprompt(prompt)
     end)
 end)
 
--- Waypoints (Disederhanakan untuk stabilitas)
-local WAYPOINTS = {
-    Vector3.new(-348, -7, 200),
-    Vector3.new(-317, -7, 173),
-    Vector3.new(-351, -7, 140),
-    Vector3.new(-473, -7, 190),
-    Vector3.new(-508, -7, 172),
-    Vector3.new(-468, -7, 143),
-    Vector3.new(-467, -7, 81),
-    Vector3.new(-509, -7, 60),
-    Vector3.new(-472, -7, 36),
-}
+-- 4. KOORDINAT TUNGGAL (Hanya koordinat terakhir yang Anda kirim)
+local SINGLE_TARGET = Vector3.new(-410.7376708984375, -6.403680801391602, 231.48736572265625) -- 
 
--- Main Loop: Pathfinding Aktif
+-- 5. LOOP UTAMA: KEJAR ITEM ATAU STANDBY DI KOORDINAT
 task.spawn(function()
     while true do
-        for _, wp in ipairs(WAYPOINTS) do
-            -- Cek apakah ada unit yang harus dibeli di dekat sini sebelum lanjut jalan
-            safeMove(wp)
-            
-            -- Jeda antar Waypoint agar tidak terlihat terburu-buru
-            task.wait(math.random(1, 2))
+        local foundTarget = false
+        
+        -- Scan area untuk mencari unit target
+        for _, o in ipairs(workspace:GetDescendants()) do
+            if o:IsA("Model") and isTarget(o) and not getgenv().FORGOTTEN_UNITS[getUnitID(o)] then
+                local part = o.PrimaryPart or o:FindFirstChildWhichIsA("BasePart")
+                if part and o.Parent then
+                    foundTarget = true
+                    getgenv().currentTarget = o
+                    humanMoveTo(part.Position)
+                    task.wait(1.5)
+                    break 
+                end
+            end
         end
-        task.wait(5)
+        
+        -- Jika tidak ada target muncul, pergi/tetap di koordinat baru Anda 
+        if not foundTarget then
+            humanMoveTo(SINGLE_TARGET)
+        end
+        
+        task.wait(1)
     end
 end)
 
--- Anti-AFK (Menggunakan metode simulasi kamera, bukan tombol keyboard)
+-- 6. ANTI-AFK (Metode Aman)
 task.spawn(function()
     while true do
         local vu = game:GetService("VirtualUser")
         vu:CaptureController()
         vu:ClickButton2(Vector2.new(0,0))
-        task.wait(300)
+        task.wait(240)
     end
 end)
 
-print("Pathfinding Updated: Gerakan Karakter Sekarang Berpola Acak.")
+print("Skrip Aktif: Semua koordinat lama dihapus. Fokus pada koordinat baru.")
