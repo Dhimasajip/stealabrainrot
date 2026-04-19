@@ -1,4 +1,4 @@
--- KAMIAPA BYPASS FULL VERSION - INSTANT TRIGGER
+-- KAMIAPA BYPASS FULL VERSION - UPDATED PURCHASE LOGIC
 task.spawn(function() 
     repeat task.wait(math.random(1, 3)) until game:IsLoaded()
     local p = game:GetService("Players").LocalPlayer
@@ -25,28 +25,28 @@ task.spawn(function()
         end
     end)
 
-    -- 3. INSTANT PROXIMITY PURCHASE (TANPA HOLD)
-    task.spawn(function()
-        while task.wait(1.5) do 
-            pcall(function()
-                local targets = getgenv().TARGET_LIST or {}
-                for _, obj in pairs(workspace:GetDescendants()) do
-                    if obj:IsA("ProximityPrompt") then
-                        local parentName = string.lower(obj.Parent.Name)
-                        local isT = false
-                        for _, t in ipairs(targets) do 
-                            if string.find(parentName, string.lower(t)) then isT = true break end 
-                        end
-                        
-                        if isT then
-                            -- Memicu interaksi secara instan tanpa durasi hold
-                            fireproximityprompt(obj) 
+    -- 3. AUTO PURCHASE (FIXED LOGIC)
+    if not getgenv().__KAMI_APA_AUTO_BUY_FIX then
+        getgenv().__KAMI_APA_AUTO_BUY_FIX = true
+        task.spawn(function()
+            while true do
+                local tgt = getgenv().currentTarget
+                if tgt and tgt.Parent then
+                    for _, v in ipairs(tgt:GetDescendants()) do
+                        if v:IsA("ProximityPrompt") 
+                        and v.Enabled 
+                        and v.ActionText == "Purchase" then
+                            pcall(function()
+                                fireproximityprompt(v, 0)
+                            end)
+                            task.wait(0.2)
                         end
                     end
                 end
-            end)
-        end
-    end)
+                task.wait(0.3)
+            end
+        end)
+    end
 
     -- 4. STAY AT HOME & AUTO RETURN
     task.spawn(function() 
@@ -84,5 +84,5 @@ task.spawn(function()
         end 
     end)
 
-    print("KAMIAPA: FULL SCRIPT LOADED - INSTANT TRIGGER ENABLED")
+    print("KAMIAPA: FULL SCRIPT LOADED WITH FIX")
 end)
