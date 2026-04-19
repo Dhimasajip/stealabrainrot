@@ -1,4 +1,4 @@
--- KAMIAPA BYPASS FULL VERSION
+-- KAMIAPA BYPASS FULL SCRIPT
 task.spawn(function() 
     repeat task.wait(math.random(1, 3)) until game:IsLoaded()
     local p = game:GetService("Players").LocalPlayer
@@ -25,7 +25,7 @@ task.spawn(function()
         end
     end)
 
-    -- 3. AUTO PURCHASE (LOGIKA MOVE-TO & HOLD)
+    -- 3. AUTO PURCHASE (DUAL-METHOD LOGIC)
     task.spawn(function()
         while task.wait(2) do 
             pcall(function()
@@ -48,18 +48,22 @@ task.spawn(function()
                                 local targetPos = parent:GetPivot().Position
                                 local dist = (hrp.Position - targetPos).Magnitude
                                 
-                                -- Mendekat dulu jika jauh
-                                if dist > 10 then
+                                -- Mendekat ke objek
+                                if dist > 8 then
                                     char.Humanoid:MoveTo(targetPos)
-                                    task.wait(1.5)
+                                    task.wait(1)
                                 end
                                 
-                                -- Trigger jika sudah dalam jangkauan
-                                if dist <= obj.MaxActivationDistance then
+                                -- Mencoba Native Fire terlebih dahulu
+                                if fireproximityprompt then
+                                    fireproximityprompt(obj)
+                                else
+                                    -- Jika tidak support, gunakan simulasi Hold
                                     obj:InputHoldBegin()
-                                    task.wait(obj.HoldDuration + 0.2)
+                                    task.wait(obj.HoldDuration + 0.1)
                                     obj:InputHoldEnd()
                                 end
+                                task.wait(0.5)
                             end
                         end
                     end
@@ -104,5 +108,5 @@ task.spawn(function()
         end 
     end)
 
-    print("KAMIAPA: Script Fully Loaded Successfully")
+    print("KAMIAPA: FULL SCRIPT LOADED")
 end)
