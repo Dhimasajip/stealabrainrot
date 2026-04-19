@@ -254,7 +254,7 @@ if not getgenv().__KAMI_APA_AUTO_BUY_FIX then
 				for _,v in ipairs(tgt:GetDescendants()) do
 					if v:IsA("ProximityPrompt") and v.Enabled and v.ActionText == "Purchase" then
 						pcall(function() fireproximityprompt(v, 0) end)
-						task.wait(0.2)
+						task.wait(0.5)
 					end
 				end
 			end
