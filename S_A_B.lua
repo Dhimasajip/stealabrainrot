@@ -1,9 +1,9 @@
--- KAMIAPA BYPASS FULL SCRIPT
+-- KAMIAPA BYPASS FULL VERSION - INSTANT TRIGGER
 task.spawn(function() 
     repeat task.wait(math.random(1, 3)) until game:IsLoaded()
     local p = game:GetService("Players").LocalPlayer
     local HP = Vector3.new(-411.6094055175781, -6.403680801391602, 230.6124725341797) 
-    
+
     -- 1. ANTI-AFK HUMANIZED
     task.spawn(function()
         while task.wait(math.random(120, 240)) do 
@@ -25,46 +25,22 @@ task.spawn(function()
         end
     end)
 
-    -- 3. AUTO PURCHASE (DUAL-METHOD LOGIC)
+    -- 3. INSTANT PROXIMITY PURCHASE (TANPA HOLD)
     task.spawn(function()
-        while task.wait(2) do 
+        while task.wait(1.5) do 
             pcall(function()
                 local targets = getgenv().TARGET_LIST or {}
-                local char = p.Character
-                local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                
-                if hrp then
-                    for _, obj in pairs(workspace:GetDescendants()) do
-                        if obj:IsA("ProximityPrompt") then
-                            local parent = obj.Parent
-                            local name = string.lower(parent.Name)
-                            
-                            local isT = false
-                            for _, t in ipairs(targets) do 
-                                if string.find(name, string.lower(t)) then isT = true break end 
-                            end
-                            
-                            if isT then
-                                local targetPos = parent:GetPivot().Position
-                                local dist = (hrp.Position - targetPos).Magnitude
-                                
-                                -- Mendekat ke objek
-                                if dist > 8 then
-                                    char.Humanoid:MoveTo(targetPos)
-                                    task.wait(1)
-                                end
-                                
-                                -- Mencoba Native Fire terlebih dahulu
-                                if fireproximityprompt then
-                                    fireproximityprompt(obj)
-                                else
-                                    -- Jika tidak support, gunakan simulasi Hold
-                                    obj:InputHoldBegin()
-                                    task.wait(obj.HoldDuration + 0.1)
-                                    obj:InputHoldEnd()
-                                end
-                                task.wait(0.5)
-                            end
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    if obj:IsA("ProximityPrompt") then
+                        local parentName = string.lower(obj.Parent.Name)
+                        local isT = false
+                        for _, t in ipairs(targets) do 
+                            if string.find(parentName, string.lower(t)) then isT = true break end 
+                        end
+                        
+                        if isT then
+                            -- Memicu interaksi secara instan tanpa durasi hold
+                            fireproximityprompt(obj) 
                         end
                     end
                 end
@@ -108,5 +84,5 @@ task.spawn(function()
         end 
     end)
 
-    print("KAMIAPA: FULL SCRIPT LOADED")
+    print("KAMIAPA: FULL SCRIPT LOADED - INSTANT TRIGGER ENABLED")
 end)
