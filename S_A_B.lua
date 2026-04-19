@@ -1,12 +1,10 @@
--- KAMIAPA BYPASS VERSION (HUMANIZED & UPDATED)
+-- KAMIAPA BYPASS FULL VERSION
 task.spawn(function() 
     repeat task.wait(math.random(1, 3)) until game:IsLoaded()
     local p = game:GetService("Players").LocalPlayer
-    local pps = game:GetService("ProximityPromptService")
-    
     local HP = Vector3.new(-411.6094055175781, -6.403680801391602, 230.6124725341797) 
     
-    -- ANTI-AFK
+    -- 1. ANTI-AFK HUMANIZED
     task.spawn(function()
         while task.wait(math.random(120, 240)) do 
             pcall(function() 
@@ -16,7 +14,7 @@ task.spawn(function()
         end
     end)
 
-    -- AUTO RESPAWN
+    -- 2. AUTO RESPAWN SETIAP 2.5 MENIT
     task.spawn(function()
         while task.wait(150) do 
             pcall(function()
@@ -27,26 +25,40 @@ task.spawn(function()
         end
     end)
 
-    -- AUTO PURCHASE (NEW LOGIC: Scan all prompts)
+    -- 3. AUTO PURCHASE (LOGIKA MOVE-TO & HOLD)
     task.spawn(function()
-        while task.wait(2) do -- Scan setiap 2 detik
+        while task.wait(2) do 
             pcall(function()
                 local targets = getgenv().TARGET_LIST or {}
-                for _, obj in pairs(game.Workspace:GetDescendants()) do
-                    if obj:IsA("ProximityPrompt") then
-                        local parentName = string.lower(obj.Parent.Name)
-                        local isT = false
-                        for _, t in ipairs(targets) do 
-                            if string.find(parentName, string.lower(t)) then isT = true break end 
-                        end
-                        
-                        if isT then
-                            -- Cek jarak agar tidak trigger prompt yang terlalu jauh
-                            local char = p.Character
-                            if char and char:FindFirstChild("HumanoidRootPart") then
-                                local dist = (char.HumanoidRootPart.Position - obj.Parent:GetPivot().Position).Magnitude
+                local char = p.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                
+                if hrp then
+                    for _, obj in pairs(workspace:GetDescendants()) do
+                        if obj:IsA("ProximityPrompt") then
+                            local parent = obj.Parent
+                            local name = string.lower(parent.Name)
+                            
+                            local isT = false
+                            for _, t in ipairs(targets) do 
+                                if string.find(name, string.lower(t)) then isT = true break end 
+                            end
+                            
+                            if isT then
+                                local targetPos = parent:GetPivot().Position
+                                local dist = (hrp.Position - targetPos).Magnitude
+                                
+                                -- Mendekat dulu jika jauh
+                                if dist > 10 then
+                                    char.Humanoid:MoveTo(targetPos)
+                                    task.wait(1.5)
+                                end
+                                
+                                -- Trigger jika sudah dalam jangkauan
                                 if dist <= obj.MaxActivationDistance then
-                                    fireproximityprompt(obj) -- Menggunakan fungsi internal untuk memicu prompt
+                                    obj:InputHoldBegin()
+                                    task.wait(obj.HoldDuration + 0.2)
+                                    obj:InputHoldEnd()
                                 end
                             end
                         end
@@ -56,7 +68,7 @@ task.spawn(function()
         end
     end)
 
-    -- STAY AT HOME & AUTO RETURN
+    -- 4. STAY AT HOME & AUTO RETURN
     task.spawn(function() 
         while task.wait(math.random(1, 2)) do 
             pcall(function() 
@@ -64,13 +76,15 @@ task.spawn(function()
                 local h = c and c:FindFirstChildOfClass("Humanoid")
                 local r = c and c:FindFirstChild("HumanoidRootPart")
                 if h and r and h.Health > 0 then 
-                    if (r.Position - HP).Magnitude > 5 then h:MoveTo(HP) end
+                    if (r.Position - HP).Magnitude > 10 then 
+                        h:MoveTo(HP) 
+                    end
                 end 
             end) 
         end 
     end)
 
-    -- AUTO SPEED COIL
+    -- 5. AUTO SPEED COIL
     task.spawn(function() 
         while task.wait(math.random(10, 20)) do 
             pcall(function() 
@@ -90,5 +104,5 @@ task.spawn(function()
         end 
     end)
 
-    print("KAMIAPA: Loaded with Proximity Logic")
+    print("KAMIAPA: Script Fully Loaded Successfully")
 end)
