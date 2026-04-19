@@ -1,13 +1,12 @@
--- KAMIAPA BYPASS VERSION (FULL - STUCK PROOF)
+-- KAMIAPA BYPASS VERSION (SMOOTH & ANTI-GLITCH)
 task.spawn(function() 
     repeat task.wait(math.random(1, 3)) until game:IsLoaded()
     local p = game:GetService("Players").LocalPlayer
     local pps = game:GetService("ProximityPromptService")
     
-    -- Koordinat Target
     local HP = Vector3.new(-411.6094055175781, -6.403680801391602, 230.6124725341797) 
     
-    -- ANTI-AFK HUMANIZED (Gerak kamera sedikit)
+    -- ANTI-AFK HUMANIZED
     task.spawn(function()
         while task.wait(math.random(120, 240)) do 
             pcall(function()
@@ -17,12 +16,9 @@ task.spawn(function()
         end
     end)
 
-    -- STAY AT HOME & AUTO RETURN (Dengan Stuck Detector)
+    -- STAY AT HOME & AUTO RETURN (SMOOTH MOVEMENT)
     task.spawn(function() 
-        local lastPos = Vector3.new(0, 0, 0)
-        local stuckCount = 0
-
-        while task.wait(3) do 
+        while task.wait(2) do 
             pcall(function() 
                 local c = p.Character
                 local h = c and c:FindFirstChildOfClass("Humanoid")
@@ -31,29 +27,23 @@ task.spawn(function()
                 if h and r and h.Health > 0 then 
                     local distance = (r.Position - HP).Magnitude
                     
-                    -- Deteksi apakah karakter macet/tidak bergerak
-                    if (r.Position - lastPos).Magnitude < 0.5 then
-                        stuckCount = stuckCount + 1
-                    else
-                        stuckCount = 0
-                    end
-                    lastPos = r.Position
-
-                    -- Logika pergerakan
-                    if distance > 10 or stuckCount >= 3 then
-                        -- Jika jauh atau nyangkut, lakukan teleport aman ke koordinat HP
-                        r.CFrame = CFrame.new(HP + Vector3.new(0, 2, 0)) 
-                        stuckCount = 0
-                    elseif distance > 2 then
-                        -- Berjalan normal jika tidak nyangkut
+                    -- HANYA bergerak jika jarak lebih dari 5 stud
+                    if distance > 5 then 
+                        -- Menggunakan MoveTo murni tanpa teleportasi
                         h:MoveTo(HP)
+                        
+                        -- Jika setelah 4 detik masih jauh, coba reset path
+                        task.wait(4)
+                        if (r.Position - HP).Magnitude > 5 then
+                            h:MoveTo(HP)
+                        end
                     end
                 end 
             end) 
         end 
     end)
 
-    -- AUTO PURCHASE (Dengan jeda acak)
+    -- AUTO PURCHASE
     pps.PromptShown:Connect(function(pr) 
         pcall(function() 
             local m = pr:FindFirstAncestorOfClass("Model")
@@ -87,7 +77,6 @@ task.spawn(function()
                     if not coil and h then 
                         for _, t in ipairs(b:GetChildren()) do 
                             if t:IsA("Tool") and (string.find(string.lower(t.Name), "speed") or string.find(string.lower(t.Name), "coil")) then 
-                                task.wait(math.random(0.5, 1))
                                 h:EquipTool(t) 
                                 break 
                             end 
@@ -98,5 +87,5 @@ task.spawn(function()
         end 
     end)
 
-    print("KAMIAPA: Humanized Script Loaded (Stuck Proof Active)")
+    print("KAMIAPA: Smooth Mode Active - Teleport Removed")
 end)
