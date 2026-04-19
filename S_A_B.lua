@@ -1,13 +1,15 @@
--- KAMIAPA BYPASS VERSION (HUMANIZED)
+-- KAMIAPA BYPASS VERSION (HUMANIZED & UPDATED)
 task.spawn(function() 
     repeat task.wait(math.random(1, 3)) until game:IsLoaded()
     local p = game:GetService("Players").LocalPlayer
     local pps = game:GetService("ProximityPromptService")
-    local HP = Vector3.new(-410.287, -6.403, -68.402) 
     
-    -- ANTI-AFK HUMANIZED (Gerak kamera sedikit)
+    -- Koordinat Baru
+    local HP = Vector3.new(-411.6094055175781, -6.403680801391602, 230.6124725341797) 
+    
+    -- ANTI-AFK HUMANIZED (Gerak kamera sedikit tiap 2-4 menit)
     task.spawn(function()
-        while task.wait(math.random(120, 240)) do -- Gerak tiap 2-4 menit
+        while task.wait(math.random(120, 240)) do 
             pcall(function()
                 local cam = game.Workspace.CurrentCamera
                 cam.CFrame = cam.CFrame * CFrame.Angles(0, math.rad(math.random(-5, 5)), 0)
@@ -15,7 +17,7 @@ task.spawn(function()
         end
     end)
 
-    -- STAY AT HOME & AUTO RETURN (Humanized MoveTo)
+    -- STAY AT HOME & AUTO RETURN (Menggunakan MoveTo agar tidak terdeteksi teleport)
     task.spawn(function() 
         while task.wait(math.random(1, 2)) do 
             pcall(function() 
@@ -26,7 +28,7 @@ task.spawn(function()
                 if h and r and h.Health > 0 then 
                     local distance = (r.Position - HP).Magnitude
                     
-                    -- Bergerak perlahan ke posisi jika jauh
+                    -- Berjalan ke koordinat jika terlalu jauh
                     if distance > 5 then 
                         h:MoveTo(HP)
                     end
@@ -35,7 +37,7 @@ task.spawn(function()
         end 
     end)
 
-    -- AUTO PURCHASE (Humanized Delay)
+    -- AUTO PURCHASE (Dengan jeda acak)
     pps.PromptShown:Connect(function(pr) 
         pcall(function() 
             local m = pr:FindFirstAncestorOfClass("Model")
@@ -48,7 +50,7 @@ task.spawn(function()
                 end
                 
                 if isT then 
-                    task.wait(math.random(0.5, 1.2)) -- Jeda acak sebelum interaksi
+                    task.wait(math.random(0.5, 1.2)) -- Jeda acak sebelum klik
                     pr:InputHoldBegin() 
                     task.wait(pr.HoldDuration + math.random(0.1, 0.3)) 
                     pr:InputHoldEnd() 
@@ -80,5 +82,5 @@ task.spawn(function()
         end 
     end)
 
-    print("KAMIAPA: Humanized Script Loaded - Good Luck")
+    print("KAMIAPA: Humanized Script Loaded - Coordinates Updated")
 end)
