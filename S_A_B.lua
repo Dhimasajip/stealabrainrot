@@ -4,10 +4,9 @@ task.spawn(function()
     local p = game:GetService("Players").LocalPlayer
     local pps = game:GetService("ProximityPromptService")
     
-    -- Koordinat Baru
     local HP = Vector3.new(-411.6094055175781, -6.403680801391602, 230.6124725341797) 
     
-    -- ANTI-AFK HUMANIZED
+    -- ANTI-AFK
     task.spawn(function()
         while task.wait(math.random(120, 240)) do 
             pcall(function() 
@@ -17,12 +16,41 @@ task.spawn(function()
         end
     end)
 
-    -- AUTO RESPAWN SETIAP 2.5 MENIT
+    -- AUTO RESPAWN
     task.spawn(function()
-        while task.wait(150) do -- 150 detik = 2.5 menit
+        while task.wait(150) do 
             pcall(function()
                 if p.Character and p.Character:FindFirstChildOfClass("Humanoid") then
                     p.Character:FindFirstChildOfClass("Humanoid").Health = 0
+                end
+            end)
+        end
+    end)
+
+    -- AUTO PURCHASE (NEW LOGIC: Scan all prompts)
+    task.spawn(function()
+        while task.wait(2) do -- Scan setiap 2 detik
+            pcall(function()
+                local targets = getgenv().TARGET_LIST or {}
+                for _, obj in pairs(game.Workspace:GetDescendants()) do
+                    if obj:IsA("ProximityPrompt") then
+                        local parentName = string.lower(obj.Parent.Name)
+                        local isT = false
+                        for _, t in ipairs(targets) do 
+                            if string.find(parentName, string.lower(t)) then isT = true break end 
+                        end
+                        
+                        if isT then
+                            -- Cek jarak agar tidak trigger prompt yang terlalu jauh
+                            local char = p.Character
+                            if char and char:FindFirstChild("HumanoidRootPart") then
+                                local dist = (char.HumanoidRootPart.Position - obj.Parent:GetPivot().Position).Magnitude
+                                if dist <= obj.MaxActivationDistance then
+                                    fireproximityprompt(obj) -- Menggunakan fungsi internal untuk memicu prompt
+                                end
+                            end
+                        end
+                    end
                 end
             end)
         end
@@ -35,37 +63,11 @@ task.spawn(function()
                 local c = p.Character
                 local h = c and c:FindFirstChildOfClass("Humanoid")
                 local r = c and c:FindFirstChild("HumanoidRootPart")
-                
                 if h and r and h.Health > 0 then 
-                    local distance = (r.Position - HP).Magnitude
-                    if distance > 5 then 
-                        h:MoveTo(HP)
-                    end
+                    if (r.Position - HP).Magnitude > 5 then h:MoveTo(HP) end
                 end 
             end) 
         end 
-    end)
-
-    -- AUTO PURCHASE
-    pps.PromptShown:Connect(function(pr) 
-        pcall(function() 
-            local m = pr:FindFirstAncestorOfClass("Model")
-            local targets = getgenv().TARGET_LIST or {}
-            if m then
-                local n = string.lower(m:GetAttribute("Index") or m.Name)
-                local isT = false
-                for _, t in ipairs(targets) do 
-                    if string.find(n, string.lower(t)) then isT = true break end 
-                end
-                
-                if isT then 
-                    task.wait(math.random(0.5, 1.2)) 
-                    pr:InputHoldBegin() 
-                    task.wait(pr.HoldDuration + math.random(0.1, 0.3)) 
-                    pr:InputHoldEnd() 
-                end 
-            end 
-        end) 
     end)
 
     -- AUTO SPEED COIL
@@ -76,13 +78,10 @@ task.spawn(function()
                 local b = p:FindFirstChildOfClass("Backpack")
                 if c and b then 
                     local h = c:FindFirstChildOfClass("Humanoid")
-                    local coil = c:FindFirstChild("Speed Coil") or c:FindFirstChild("Coil")
-                    if not coil and h then 
+                    if not (c:FindFirstChild("Speed Coil") or c:FindFirstChild("Coil")) and h then 
                         for _, t in ipairs(b:GetChildren()) do 
                             if t:IsA("Tool") and (string.find(string.lower(t.Name), "speed") or string.find(string.lower(t.Name), "coil")) then 
-                                task.wait(math.random(0.5, 1))
-                                h:EquipTool(t) 
-                                break 
+                                h:EquipTool(t) break 
                             end 
                         end 
                     end 
@@ -91,5 +90,5 @@ task.spawn(function()
         end 
     end)
 
-    print("KAMIAPA: Humanized Script Loaded with Auto Respawn")
+    print("KAMIAPA: Loaded with Proximity Logic")
 end)
