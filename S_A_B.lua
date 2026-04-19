@@ -1,12 +1,13 @@
--- KAMIAPA BYPASS VERSION (SMOOTH & ANTI-GLITCH)
+-- KAMIAPA BYPASS VERSION (STABLE NO-GLITCH)
 task.spawn(function() 
     repeat task.wait(math.random(1, 3)) until game:IsLoaded()
     local p = game:GetService("Players").LocalPlayer
     local pps = game:GetService("ProximityPromptService")
     
+    -- Koordinat Target
     local HP = Vector3.new(-411.6094055175781, -6.403680801391602, 230.6124725341797) 
     
-    -- ANTI-AFK HUMANIZED
+    -- ANTI-AFK (Humanized - Hanya gerak kamera, tanpa input tombol)
     task.spawn(function()
         while task.wait(math.random(120, 240)) do 
             pcall(function()
@@ -16,9 +17,9 @@ task.spawn(function()
         end
     end)
 
-    -- STAY AT HOME & AUTO RETURN (SMOOTH MOVEMENT)
+    -- STAY AT HOME & AUTO RETURN (STABLE - NO JITTER)
     task.spawn(function() 
-        while task.wait(2) do 
+        while task.wait(3) do -- Delay 3 detik agar tidak membebani physics game
             pcall(function() 
                 local c = p.Character
                 local h = c and c:FindFirstChildOfClass("Humanoid")
@@ -27,16 +28,9 @@ task.spawn(function()
                 if h and r and h.Health > 0 then 
                     local distance = (r.Position - HP).Magnitude
                     
-                    -- HANYA bergerak jika jarak lebih dari 5 stud
-                    if distance > 5 then 
-                        -- Menggunakan MoveTo murni tanpa teleportasi
+                    -- Hanya perintah jalan jika jarak > 8 stud (menghindari glitch/jitter)
+                    if distance > 8 then 
                         h:MoveTo(HP)
-                        
-                        -- Jika setelah 4 detik masih jauh, coba reset path
-                        task.wait(4)
-                        if (r.Position - HP).Magnitude > 5 then
-                            h:MoveTo(HP)
-                        end
                     end
                 end 
             end) 
@@ -87,5 +81,5 @@ task.spawn(function()
         end 
     end)
 
-    print("KAMIAPA: Smooth Mode Active - Teleport Removed")
+    print("KAMIAPA: Stable Mode Active - Teleport & Glitch Disabled")
 end)
