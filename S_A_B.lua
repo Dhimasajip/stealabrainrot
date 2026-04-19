@@ -1,25 +1,36 @@
--- KAMIAPA BYPASS VERSION (STABLE NO-GLITCH)
+-- KAMIAPA BYPASS VERSION (HUMANIZED & UPDATED)
 task.spawn(function() 
     repeat task.wait(math.random(1, 3)) until game:IsLoaded()
     local p = game:GetService("Players").LocalPlayer
     local pps = game:GetService("ProximityPromptService")
     
-    -- Koordinat Target
+    -- Koordinat Baru
     local HP = Vector3.new(-411.6094055175781, -6.403680801391602, 230.6124725341797) 
     
-    -- ANTI-AFK (Humanized - Hanya gerak kamera, tanpa input tombol)
+    -- ANTI-AFK HUMANIZED
     task.spawn(function()
         while task.wait(math.random(120, 240)) do 
-            pcall(function()
+            pcall(function() 
                 local cam = game.Workspace.CurrentCamera
                 cam.CFrame = cam.CFrame * CFrame.Angles(0, math.rad(math.random(-5, 5)), 0)
             end)
         end
     end)
 
-    -- STAY AT HOME & AUTO RETURN (STABLE - NO JITTER)
+    -- AUTO RESPAWN SETIAP 2.5 MENIT
+    task.spawn(function()
+        while task.wait(150) do -- 150 detik = 2.5 menit
+            pcall(function()
+                if p.Character and p.Character:FindFirstChildOfClass("Humanoid") then
+                    p.Character:FindFirstChildOfClass("Humanoid").Health = 0
+                end
+            end)
+        end
+    end)
+
+    -- STAY AT HOME & AUTO RETURN
     task.spawn(function() 
-        while task.wait(3) do -- Delay 3 detik agar tidak membebani physics game
+        while task.wait(math.random(1, 2)) do 
             pcall(function() 
                 local c = p.Character
                 local h = c and c:FindFirstChildOfClass("Humanoid")
@@ -27,9 +38,7 @@ task.spawn(function()
                 
                 if h and r and h.Health > 0 then 
                     local distance = (r.Position - HP).Magnitude
-                    
-                    -- Hanya perintah jalan jika jarak > 8 stud (menghindari glitch/jitter)
-                    if distance > 8 then 
+                    if distance > 5 then 
                         h:MoveTo(HP)
                     end
                 end 
@@ -71,6 +80,7 @@ task.spawn(function()
                     if not coil and h then 
                         for _, t in ipairs(b:GetChildren()) do 
                             if t:IsA("Tool") and (string.find(string.lower(t.Name), "speed") or string.find(string.lower(t.Name), "coil")) then 
+                                task.wait(math.random(0.5, 1))
                                 h:EquipTool(t) 
                                 break 
                             end 
@@ -81,5 +91,5 @@ task.spawn(function()
         end 
     end)
 
-    print("KAMIAPA: Stable Mode Active - Teleport & Glitch Disabled")
+    print("KAMIAPA: Humanized Script Loaded with Auto Respawn")
 end)
