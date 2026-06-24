@@ -2,11 +2,9 @@ task.wait(10)
 if getgenv().__KAMI_APA_MAIN_RUNNING then return end
 getgenv().__KAMI_APA_MAIN_RUNNING = true
 
-task.wait(5)
 repeat task.wait() until game:IsLoaded()
 
 local Players = game:GetService("Players")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 
 local player = Players.LocalPlayer
@@ -17,7 +15,7 @@ getgenv().FORGOTTEN_UNITS = {}
 getgenv().UNIT_SPAWN_COUNT = {}
 getgenv().SEEN_UNIT_INSTANCES = {}
 
-getgenv().MAX_SPAWN_BEFORE_FORGET = 12
+getgenv().MAX_SPAWN_BEFORE_FORGET = 8
 
 getgenv().GRAB_RADIUS = 25
 getgenv().TARGET_TIMEOUT = 50
@@ -267,6 +265,7 @@ task.spawn(function()
 
 end)
 
+-- KOORDINAT BARU YANG DIAMBIL DARI image_7a7209.png
 local HOME_POS = Vector3.new(-438.3928527832031, -4.257575035095215, 61.922977447509766)
 local RETURN_DISTANCE = 5
 
@@ -295,37 +294,11 @@ task.spawn(function()
 
 end)
 
-task.spawn(function()
-
-	while true do
-
-		local char = player.Character
-		local hum = char and char:FindFirstChildOfClass("Humanoid")
-
-		if hum and hum.Health > 0 then
-
-			for _=1,2 do
-				VirtualInputManager:SendKeyEvent(true,Enum.KeyCode.I,false,game)
-				VirtualInputManager:SendKeyEvent(false,Enum.KeyCode.I,false,game)
-			end
-
-			for _=1,2 do
-				VirtualInputManager:SendKeyEvent(true,Enum.KeyCode.O,false,game)
-				VirtualInputManager:SendKeyEvent(false,Enum.KeyCode.O,false,game)
-			end
-
-		end
-
-		task.wait(360)
-
-	end
-
-end)
 
 if not getgenv().__KAMI_APA_AUTO_RESET_RUNNING then
 
 	getgenv().__KAMI_APA_AUTO_RESET_RUNNING = true
-	local AUTO_RESET_DELAY = 150
+	local AUTO_RESET_DELAY = 600
 
 	task.spawn(function()
 
@@ -391,4 +364,33 @@ if not getgenv().__KAMI_APA_AUTO_SPEED_COIL then
 		end
 	end)
 
+end
+
+
+if not getgenv().__KAMI_APA_AUTO_BUY_FIX then
+	getgenv().__KAMI_APA_AUTO_BUY_FIX = true
+
+	task.spawn(function()
+		while true do
+
+			local tgt = getgenv().currentTarget
+
+			if tgt and tgt.Parent then
+				for _,v in ipairs(tgt:GetDescendants()) do
+					if v:IsA("ProximityPrompt") 
+					and v.Enabled 
+					and v.ActionText == "Purchase" then
+						
+						pcall(function()
+							fireproximityprompt(v, 0)
+						end)
+
+						task.wait(0.2)
+					end
+				end
+			end
+
+			task.wait(0.3)
+		end
+	end)
 end
